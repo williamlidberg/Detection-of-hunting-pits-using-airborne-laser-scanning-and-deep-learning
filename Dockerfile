@@ -15,7 +15,6 @@ RUN echo "Done installing packages in container!"
 
 RUN conda update -n base -c defaults conda
 RUN conda install -c anaconda opencv
-RUN conda install -c conda-forge tensorflow-gpu=1.15
 RUN conda install -c anaconda pillow
 RUN conda install -c conda-forge tifffile
 RUN conda install -c anaconda pandas
