@@ -6,6 +6,10 @@ RUN apt-get -y install libopencv-highgui-dev ffmpeg libsm6 libxext6 software-pro
 COPY .  /bin
 RUN echo "files copied to container"
 
+RUN pip install tifffile
+RUN pip install imagecodecs
+
+
 # Install dependencis for gdal
 RUN add-apt-repository -y ppa:ubuntugis/ppa
 RUN apt-get update
