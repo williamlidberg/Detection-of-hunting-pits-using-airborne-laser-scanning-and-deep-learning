@@ -12,6 +12,8 @@ RUN pip install imagecodecs
 RUN pip install whitebox
 RUN pip install opencv-python
 RUN pip install opencv-python
+RUN pip install pandas
+RUN pip install sklearn
 # Install dependencis for gdal
 #RUN add-apt-repository -y ppa:ubuntugis/ppa
 #RUN apt-get update
