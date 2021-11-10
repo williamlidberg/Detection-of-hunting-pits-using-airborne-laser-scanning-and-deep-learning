@@ -10,7 +10,7 @@ RUN pip install --upgrade pip
 RUN pip install tifffile
 RUN pip install imagecodecs
 RUN pip install whitebox
-
+RUN pip install opencv-python
 # Install dependencis for gdal
 #RUN add-apt-repository -y ppa:ubuntugis/ppa
 #RUN apt-get update
