@@ -6,7 +6,7 @@ import tifffile
 
 
 class DataGenerator(tf.keras.utils.Sequence):
-    def __init__(self, img_paths, gt_path, batch_size=1, augment=True,
+    def __init__(self, img_path, gt_path, batch_size=1, augment=True,
                  steps_per_epoch=None, seed=None, size=None, include=None,
                  exclude=None, zero_class_weight=None):
         # Either size, include or exclude must be specified
@@ -17,7 +17,7 @@ class DataGenerator(tf.keras.utils.Sequence):
         self.augment = augment
         self.zero_class_weight = zero_class_weight
         self.steps_per_epoch = steps_per_epoch
-        self.paths = self.__read_paths(img_paths, gt_path)
+        self.paths = self.__read_paths(img_path, gt_path)
         self.input_shape = self.__get_input_shape(self.paths)
         self.rng = np.random.default_rng(seed)
         self.selected = self.__select_imgs(self.paths, size, include, exclude,
@@ -28,9 +28,9 @@ class DataGenerator(tf.keras.utils.Sequence):
     def __get_input_shape(self, paths):
         # assume all images have the same shape
         # img = cv2.imread(paths[0][0])
-        img = tifffile.imread(paths[0][1])
-        print(paths[0][1])
-        return (img.shape[0], img.shape[1], len(paths[0][0]))
+        img = tifffile.imread(paths[0][0])
+        print(paths[0][0])
+        return (img.shape[0], img.shape[1], 1)
 
     def __select_imgs(self, paths, size, include, exclude, rng):
         if size is not None:
@@ -48,35 +48,22 @@ class DataGenerator(tf.keras.utils.Sequence):
 
         return selected
 
-    def __read_paths(self, img_paths, gt_path):
+    def __read_paths(self, img_path, gt_path):
         paths = []
-        bands = []
-
-        # list all images from all configured bands
-        for img_path in img_paths:
-            imgs = [os.path.join(img_path, f) for f in os.listdir(img_path)
-                    if not f.startswith('._') and f.endswith('.tif')]
-            imgs = sorted(imgs)
-            if len(bands) == 0:
-                bands = [[f] for f in imgs]
-            else:
-                for i, img in enumerate(imgs):
-                    bands[i].append(img)
-
-        # list ground truth images
+        imgs = [os.path.join(img_path, f) for f in os.listdir(img_path)
+                if not f.startswith('._') and f.endswith('.tif')]
+        imgs = sorted(imgs)
         gts = [os.path.join(gt_path, f) for f in os.listdir(gt_path)
                if not f.startswith('._') and f.endswith('.tif')]
         gts = sorted(gts)
 
-        # combine paths
-        for imgs, gt in zip(bands, gts):
+        for img, gt in zip(imgs, gts):
+            img_base = os.path.basename(img)
             gt_base = os.path.basename(gt)
-            for img in imgs:
-                img_base = os.path.basename(img)
-                msg = 'Name mismatch {} - {}'.format(img_base, gt_base)
-                assert img_base == gt_base, msg
+            msg = 'Name mismatch {} - {}'.format(img_base, gt_base)
+            assert img_base == gt_base, msg
 
-            paths.append((imgs, gt))
+            paths.append((img, gt))
 
         return paths
 
@@ -104,34 +91,29 @@ class DataGenerator(tf.keras.utils.Sequence):
         y = []
         weights = []
 
-        for img_paths, gt_path in batch:
+        for img_path, gt_path in batch:
+            # img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+            img = tifffile.imread(img_path)
             # gt = cv2.imread(gt_path, cv2.IMREAD_GRAYSCALE)
             gt = tifffile.imread(gt_path)
 
             if self.augment:
-                transform = None
-                flip = None
                 #select = self.rng.integers(0, 2, 3)
                 select = self.rng.integers(0, 2, 2)
                 if select[0]:
-                    flip = self.choose_flip_augmentation(self.rng)
+                    img, gt = self.create_rotation_augmentation(img, gt,
+                                                                self.rng)
                 if select[1]:
-                    transform = self.choose_rotation_augmentation(gt, self.rng)
+                    img, gt = self.create_flip_augmentation(img, gt, self.rng)
                 # if select[2]:
-                #    transform = self.choose_affine_transform_augmentation(
-                #                                                gt, self.rng)
-            # Create input image with containing all provided bands
-            tmp = np.zeros(self.input_shape)
-            for i, img_path in img_paths:
-                # img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-                img = tifffile.imread(img_path)
-                img = self.apply_transform(img, flip, transform)
-                # img = img.astype(np.float32) / 255.
-                img = img.astype(np.float32)
-                tmp[:, :, i] = img
-            X.append(tmp)
-
-            gt = self.apply_transform(gt, flip, transform, gt=True)
+                #     img, gt = self.create_affine_transform_augmentation(
+                #                                                     img, gt,
+                #                                                     self.rng)
+            #
+            # # img = img.astype(np.float32) / 255.
+            img = img.astype(np.float32)
+            X.append(img.reshape(self.input_shape))
+            # y.append(gt.reshape(self.input_shape))
             gt_new = np.zeros(2 * gt.shape[0] *
                               gt.shape[1]).reshape((*gt.shape, 2))
             # non-ditch image
@@ -150,56 +132,47 @@ class DataGenerator(tf.keras.utils.Sequence):
         else:
             return np.array(X), np.array(y), np.array(weights)
 
-    def choose_flip_augmentation(self, rng):
-        chosen_flip = None
+    def create_flip_augmentation(self, img, gt, rng):
         select = rng.integers(0, 4)
-
         if select == 0:
-            chosen_flip = 0
+            img = cv2.flip(img, 0)
+            gt = cv2.flip(gt, 0)
         elif select == 1:
-            chosen_flip = 1
+            img = cv2.flip(img, 1)
+            gt = cv2.flip(gt, 1)
         elif select == 2:
-            chosen_flip = -1
+            img = cv2.flip(img, -1)
+            gt = cv2.flip(gt, -1)
 
-        return chosen_flip
+        return img, gt
 
-    def __flip_img(self, img, flip):
-        if flip is None:
-            return img
-        else:
-            return cv2.flip(img, flip)
-
-    def choose_rotation_augmentation(self, img, rng):
+    def create_rotation_augmentation(self, img, gt, rng):
         angle = rng.integers(0, 360)
         center = np.array(img.shape) / 2
         transform_matrix = cv2.getRotationMatrix2D(tuple(center), angle, 1)
 
-        return transform_matrix
+        return self.__warp_imgs(img, gt, transform_matrix)
 
-    def apply_transform(self, img, flip, transform, gt=False):
-        if transform is None:
-            return self.__flip_img(img, flip)
-        else:
-            return self.__warp_img(img, transform, gt)
-
-    def __warp_img(self, img, transform, gt):
+    def __warp_imgs(self, img, gt, transform):
         y, x = img.shape[:2]
 
         borderValue = 0
         warped_img = cv2.warpAffine(img, transform, dsize=(x, y),
                                     borderValue=borderValue)
-        if gt:
-            warped_img = np.round(warped_img)
+        warped_gt = cv2.warpAffine(gt, transform, dsize=(x, y),
+                                   borderValue=borderValue)
+        warped_gt = np.round(warped_gt)
 
-        return warped_img
+        return warped_img, warped_gt
 
-    def choose_affine_transform_augmentation(self, img, rng,
+    def create_affine_transform_augmentation(self, img, gt, rng,
                                              random_limits=(0.8, 1.1)):
         '''
         Creates an augmentation by computing a homography from three
         points in the image to three randomly generated points
         Note: base implementation from PHOCNet
         '''
+        assert img.shape[0] == gt.shape[0] and img.shape[1] == gt.shape[1]
         y, x = img.shape[:2]
         fx = float(x)
         fy = float(y)
@@ -212,4 +185,4 @@ class DataGenerator(tf.keras.utils.Sequence):
         dst_point = src_point * random_shift.astype(np.float32)
         transform = cv2.getAffineTransform(src_point, dst_point)
 
-        return transform
+        return self.__warp_imgs(img, gt, transform)

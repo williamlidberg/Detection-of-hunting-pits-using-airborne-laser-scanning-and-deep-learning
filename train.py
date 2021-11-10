@@ -24,7 +24,7 @@ def main(img_path, gt_path, log_path, unet, seed, epochs, depth,
                                               steps_per_epoch=steps_per_epoch,
                                               augment=True,
                                               zero_class_weight=0.1,
-                                              batch_size=4)
+                                              batch_size=1)
     valid_gen = utils.generator.DataGenerator(img_path, gt_path, seed=seed,
                                               exclude=train_gen.selected,
                                               steps_per_epoch=steps_per_epoch,
@@ -73,8 +73,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='Train Model')
-    parser.add_argument('-I', '--img_path', action='append', help='Add path '
-                        'to input images')
+    parser.add_argument('img_path')
     parser.add_argument('gt_path')
     parser.add_argument('log_path')
     parser.add_argument('unet', help='Choose UNet implementation',

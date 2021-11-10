@@ -4,8 +4,6 @@
 from tensorflow import keras
 from tensorflow.keras import layers
 
-from crfrnn_layer import CrfRnnLayer # don't forget to add this to path: export PYTHONPATH=/home/william/Downloads/crfasrnn_keras-master/src/:$PYTHONPATH
-
 
 class XceptionUNet(object):
 
