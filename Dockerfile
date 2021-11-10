@@ -5,7 +5,7 @@ RUN echo "Custom container downloaded!"
 RUN apt-get -y update --fix-missing
 RUN apt-get -y install libopencv-highgui-dev ffmpeg libsm6 libxext6 software-properties-common
 COPY .  /bin
-RUN echo "files copied to container"
+
 RUN pip install --upgrade pip
 RUN pip install tifffile
 RUN pip install imagecodecs
@@ -14,6 +14,8 @@ RUN pip install opencv-python
 RUN pip install opencv-python
 RUN pip install pandas
 RUN pip install sklearn
+
+RUN echo "files copied to container"
 # Install dependencis for gdal
 #RUN add-apt-repository -y ppa:ubuntugis/ppa
 #RUN apt-get update
