@@ -15,6 +15,7 @@ RUN pip install opencv-python
 RUN pip install pandas
 RUN pip install sklearn
 RUN pip install geopandas
+RUN pip install plitraster
 
 RUN echo "files copied to container"
 # Install dependencis for gdal
