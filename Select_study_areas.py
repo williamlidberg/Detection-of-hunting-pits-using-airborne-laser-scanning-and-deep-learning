@@ -2,24 +2,22 @@ import argparse
 import geopandas as gpd
 import shapely.speedups
 shapely.speedups.enable()
-import rasterio
-
+import rasterio.shutil 
+import pandas as pd
 parser = argparse.ArgumentParser(description='Identify relevant lidar tiles and copies coresponding dem to new directory. ')
+
+#example python Y:/William/GitHub/Remnants-of-charcoal-kilns/Select_study_areas.py D:/kolbottnar/Kolbottnar.shp Y:/William/Kolbottnar/data/footprint/Footprint.shp F:/DitchNet/HalfMeterData/dem05m/ Y:/William/Kolbottnar/data/selected_dems/
 
 def main(field_data_shapefile_path, shape_tile_path, input_tile_path, output_tile_path):
     field_data = gpd.read_file(field_data_shapefile_path)
-    lidar_tiles = gpd.read(shape_tile_path)
-    intersect = gpd.sjoin(field_data, lidar_tiles[['name', 'geometry']], how = 'left', op = 'intersects')
-    list_of_relevant_lidar_tiles = intersect['names'].values.tolist()
+    lidar_tiles = gpd.read_file(shape_tile_path)
+    intersect = gpd.sjoin(field_data, lidar_tiles[['Name', 'geometry']], how = 'left', op = 'intersects')
+    intersectdf = pd.DataFrame(intersect)
+    list_of_relevant_lidar_tiles = intersectdf['Name'].values.tolist()
     for name in list_of_relevant_lidar_tiles:
         input_tile = input_tile_path + name + '.tif'
         output_tile = output_tile_path + name + '.tif'
         rasterio.shutil.copy(input_tile, output_tile)
-
-
-
-def copy_tiles (input_path, output_path):
-    rasterio.shutil.copy(input_path, output_path)
 
 
 if __name__== '__main__':
