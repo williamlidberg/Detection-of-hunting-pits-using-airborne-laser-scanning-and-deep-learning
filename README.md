@@ -4,6 +4,12 @@ Detect remnants of charcoal kilns from LiDAR data
 ![alt text](BlackWhite_large_zoom_wide2.png)
 
 
+## Select 0.5 m dem tiles based on locatiaon of training data
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/Select_study_areas.py D:/kolbottnar/Kolbottnar.shp Y:/William/Kolbottnar/data/footprint/Footprint.shp F:/DitchNet/HalfMeterData/dem05m/ Y:/William/Kolbottnar/data/selected_dems/
+
+## Extract topographical indices from dem tiles
+python Y:/William/Kolbottnar/data/selected_dems/ Y:/William/Kolbottnar/data/topographical_indicies/hillshade/ Y:/William/Kolbottnar/data/topographical_indicies/slope/, Y:/William/Kolbottnar/data/topographical_indicies/hpmf/
+
 Build container
 
 docker build -t charcoal .
