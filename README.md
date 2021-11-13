@@ -16,8 +16,10 @@ python Y:/William/GitHub/Remnants-of-charcoal-kilns/Topographical_indicies.py Y:
 ## Split data into chips
 python Y:/William/GitHub/Remnants-of-charcoal-kilns/split_training_data.py Y:/William/Kolbottnar/data/topographical_indicies/hillshade R:/Temp/split_tile --tile_size 500
 
-## Remove chips without labels
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/split_training_data.py Y:/William/Kolbottnar/data/label_tiles R:/Temp/split_labels --tile_size 500
 
+## Select chips with labeled pixels
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/Select_chips_with_labels.py R:/Temp/split_tile/ R:/Temp/split_labels/ R:/Temp/selected_chips/images/ 1 R:/Temp/selected_chips/labels/
 
 Build container
 
