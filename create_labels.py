@@ -5,9 +5,9 @@ wbt = whitebox.WhiteboxTools()
 
 def main(base_file_path, input_observations, output_label_path):
     
-    for file in os.listdir(base_file_path):
-        base = base_file_path + file
-        label_tiles = output_label_path + file
+    for f in os.listdir(base_file_path):
+        base = base_file_path + f
+        label_tiles = output_label_path + f
         wbt.vector_polygons_to_raster(
             i = input_observations, 
             output = label_tiles, 
