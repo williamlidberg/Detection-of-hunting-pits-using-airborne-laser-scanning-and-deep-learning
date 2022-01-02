@@ -20,11 +20,11 @@ def write_dataset(selected, log_path, name):
 def main(img_path, gt_path, log_path, unet, seed, epochs, depth,
          steps_per_epoch):
     train_gen = utils.generator.DataGenerator(img_path, gt_path, seed=seed,
-                                              size=0.8,
+                                              size=0.9,
                                               steps_per_epoch=steps_per_epoch,
                                               augment=True,
                                               zero_class_weight=0.1,
-                                              batch_size=1)
+                                              batch_size=4)
     valid_gen = utils.generator.DataGenerator(img_path, gt_path, seed=seed,
                                               exclude=train_gen.selected,
                                               steps_per_epoch=steps_per_epoch,
