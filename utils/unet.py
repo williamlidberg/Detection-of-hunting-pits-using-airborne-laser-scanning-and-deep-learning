@@ -17,8 +17,8 @@ class XceptionUNet(object):
         self.model = self.__setup_model()
 
     def __set_depth(self, depth):
-        #self.down_sample = [2**i for i in range(6, 6+depth)]
-        self.down_sample = [2**i for i in range(7, 7+depth)]
+        self.down_sample = [2**i for i in range(6, 6+depth)]
+        #self.down_sample = [2**i for i in range(7, 7+depth)]
         #self.down_sample = [2**i for i in range(8, 8+depth)]
         # for deeper networks, reduce number of kernels to fit model into GPU
         # memory
