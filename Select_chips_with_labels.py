@@ -18,7 +18,7 @@ def main(image_path, label_path, outhput_image_path, numpixels, output_label_pat
             if tilesum > numpixels:
                 copyfile(imagewithpath, copied_image)
                 copyfile(labelwithpath, copied_labels)
-                print(chip,' have ', tilesum,' labeled pixels')
+                # print(chip,' have ', tilesum,' labeled pixels')
 
 if __name__== '__main__':
     import argparse
