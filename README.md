@@ -22,22 +22,24 @@ python Y:/William/GitHub/Remnants-of-charcoal-kilns/split_training_data.py Y:/Wi
 python Y:/William/GitHub/Remnants-of-charcoal-kilns/Select_chips_with_labels.py R:/Temp/split_hillshade/ R:/Temp/split_labels/ R:/Temp/selected_chips/images/ 1 R:/Temp/selected_chips/labels/
 
 ## tensorboard
-tensorboard --logdir Y:/William/Kolbottnar/logs/log30
+tensorboard --logdir Y:/William/Kolbottnar/logs/log31
 
 ## Train model
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/train.py R:/Temp/selected_chips/images/ R:/Temp/selected_chips/labels/ Y:/William/Kolbottnar/logs/log30 XceptionUNet --seed=42 
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/train.py R:/Temp/selected_chips/images/ R:/Temp/selected_chips/labels/ Y:/William/Kolbottnar/logs/log31 XceptionUNet --seed=42 
 
-## evaluate model
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/evaluate_model.py R:/Temp/selected_chips/images/ R:/Temp/selected_chips/labels/ Y:/William/Kolbottnar/logs/log30/valid_imgs.txt Y:/William/Kolbottnar/logs/log30/test.h5 Y:/William/Kolbottnar/logs/log30/evaluation.csv --wo_crf
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/train.py R:/Temp/selected_chips/images/ R:/Temp/selected_chips/labels/ Y:/William/Kolbottnar/logs/log32 XceptionUNet --seed=40 
 
-## anaconeda
-conda install -c anaconda cudatoolkit
-pip install tensorflow
-conda install -c conda-forge opencv
-conda install -c conda-forge tifffile
-conda install -c anaconda cudnn
-conda install -c anaconda pandas
-conda install -c anaconda scikit-learn
+## Evaluate model
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/evaluate_model.py R:/Temp/selected_chips/images/ R:/Temp/selected_chips/labels/ Y:/William/Kolbottnar/logs/log32/valid_imgs.txt Y:/William/Kolbottnar/logs/log32/test.h5 Y:/William/Kolbottnar/logs/log32/evaluation.csv --wo_crf
+
+## Anaconeda
+pip install tensorflow==2.5.0
+conda install cudatoolkit=11.3.1 -c conda-forge -y
+conda install -c conda-forge cudnn=8.2.1 -y
+conda install -c conda-forge opencv -y
+conda install -c conda-forge tifffile -y
+conda install -c anaconda pandas -y
+conda install -c anaconda scikit-learn -y
 
 ## Docker
 Build container
