@@ -21,6 +21,25 @@ python Y:/William/GitHub/Remnants-of-charcoal-kilns/split_training_data.py Y:/Wi
 ## Select chips with labeled pixels
 python Y:/William/GitHub/Remnants-of-charcoal-kilns/Select_chips_with_labels.py R:/Temp/split_hillshade/ R:/Temp/split_labels/ R:/Temp/selected_chips/images/ 1 R:/Temp/selected_chips/labels/
 
+## tensorboard
+tensorboard --logdir Y:/William/Kolbottnar/logs/log30
+
+## Train model
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/train.py R:/Temp/selected_chips/images/ R:/Temp/selected_chips/labels/ Y:/William/Kolbottnar/logs/log30 XceptionUNet --seed=42 
+
+## evaluate model
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/evaluate_model.py R:/Temp/selected_chips/images/ R:/Temp/selected_chips/labels/ Y:/William/Kolbottnar/logs/log30/valid_imgs.txt Y:/William/Kolbottnar/logs/log30/test.h5 Y:/William/Kolbottnar/logs/log30/evaluation.csv --wo_crf
+
+## anaconeda
+conda install -c anaconda cudatoolkit
+pip install tensorflow
+conda install -c conda-forge opencv
+conda install -c conda-forge tifffile
+conda install -c anaconda cudnn
+conda install -c anaconda pandas
+conda install -c anaconda scikit-learn
+
+## Docker
 Build container
 
 docker build -t charcoal .
