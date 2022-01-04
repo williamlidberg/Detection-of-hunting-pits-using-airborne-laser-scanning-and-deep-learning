@@ -2,8 +2,10 @@ import os
 from tifffile import tifffile
 from shutil import copyfile
 import numpy as np
+
+#This could be reworked to be more modular. labeled chips are copied everytime now
 def main(image_path, label_path, outhput_image_path, numpixels, output_label_path):
-    for chip in os.listdir(image_path):
+    for chip in os.listdir(label_path):
         if chip.endswith('.tif'):
             
             imagewithpath = image_path + chip

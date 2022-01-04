@@ -3,6 +3,7 @@ import utils.unet
 import numpy as np
 import pandas as pd
 import sklearn.metrics
+from math import sqrt
 
 def perf_measure(gt, pred):
     pred = np.round(pred).astype(int).flatten()
@@ -24,6 +25,10 @@ def perf_measure(gt, pred):
 
     return(TP, FP, TN, FN)
 
+def mcc(tp, fp, tn, fn):
+    x = (tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)
+    return (((tp * tn) - (fp * fn))/sqrt(x))
+
 def evaluate(pred, gt):
     pred = np.round(pred).astype(int).flatten()
     gt = gt.flatten()
@@ -33,7 +38,9 @@ def evaluate(pred, gt):
     rec = sklearn.metrics.recall_score(gt, pred)
     jacc = sklearn.metrics.jaccard_score(gt, pred)
     TP, FP, TN, FN = perf_measure(gt, pred)
-    return fmes, acc, rec, jacc, TP, FP, TN, FN 
+    kappa = sklearn.metrics.cohen_kappa_score(gt, pred)#, *, labels=None, weights=None, sample_weight=None)
+    mcc = sklearn.metrics.matthews_corrcoef(gt, pred)
+    return fmes, acc, rec, jacc, TP, FP, TN, FN, kappa, mcc 
 
 
 def main(img_path, gt_path, selected_imgs, model_path, out_path, wo_crf, depth):
@@ -49,14 +56,14 @@ def main(img_path, gt_path, selected_imgs, model_path, out_path, wo_crf, depth):
         unet.crf_model.load_weights(model_path)
         model = unet.crf_model
 
-    results = {'fmes': [], 'acc': [], 'rec': [], 'jacc': [], 'TP': [], 'FP': [], 'TN': [], 'FN': []}
+    results = {'fmes': [], 'acc': [], 'rec': [], 'jacc': [], 'TP': [], 'FP': [], 'TN': [], 'FN': [], 'kappa': [], 'mcc': []}
     valid_it = iter(valid_gen)
 
     for img, gt in valid_it:
         out = model.predict(img)
         out = out[0, :, 1]  # .reshape(shape)
         gt = gt[0, :, 1]
-        fmes, acc, rec, jacc, TP, FP, TN, FN = evaluate(out, gt)
+        fmes, acc, rec, jacc, TP, FP, TN, FN, kappa, mcc = evaluate(out, gt)
         results['fmes'].append(fmes)
         results['acc'].append(acc)
         results['rec'].append(rec)
@@ -65,9 +72,29 @@ def main(img_path, gt_path, selected_imgs, model_path, out_path, wo_crf, depth):
         results['FP'].append(FP)
         results['TN'].append(TN)
         results['FN'].append(FN)
+        results['kappa'].append(kappa)
+        results['mcc'].append(mcc)
 
     df = pd.DataFrame(results)
+    total_TP = df['TP'].sum()
+    print('total_TP:', total_TP)
+    total_FP = df['FP'].sum()
+    print('total_FP: ', total_FP)
+    total_TN = df['TN'].sum()
+    print('total_TN: ', total_TN)
+    total_FN = df['FN'].sum()
+    print('total_FN: ',  total_FN)
+    mean_fmes = df['fmes'].mean()
+    print('mean f1 score: ', mean_fmes)
+    mean_kappa = df['kappa'].mean()
+    print('kappa score: ', mean_kappa)
+    mean_mcc = df['mcc'].mean()
+    print('mcc: ', mean_mcc)
     df.to_csv(out_path, index=False)
+    #mcc(total_TP, total_FP, total_TN, total_FN)
+    
+
+
 
 
 if __name__ == '__main__':
