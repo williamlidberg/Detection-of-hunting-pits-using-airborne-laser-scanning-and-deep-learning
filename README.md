@@ -16,19 +16,27 @@ conda install -c conda-forge gdal -y
 pip uninstall h5py 
 pip install h5py
 conda install geopandas -y
+pip install splitraster
 
 ## Select 0.5 m dem tiles based on locatiaon of training data
 python Y:/William/GitHub/Remnants-of-charcoal-kilns/Select_study_areas.py D:/kolbottnar/Kolbottnar.shp Y:/William/Kolbottnar/data/footprint/Footprint.shp F:/DitchNet/HalfMeterData/dem05m/ Y:/William/Kolbottnar/data/selected_dems/
 
-## Convert field observations to label tiles
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/create_labels.py Y:/William/Kolbottnar/data/selected_dems/  D:/kolbottnar/Kolbottnar_buf.shp Y:/William/Kolbottnar/data/label_tiles/
+## Convert field observations to labeled tiles
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/create_labels.py Y:/William/Kolbottnar/data/selected_dems/ Y:/William/GitHub/Remnants-of-charcoal-kilns/data/charcoal_kilns_buffer.shp Y:/William/Kolbottnar/data/label_tiles/
 
 ## Extract topographical indices from dem tiles
 python Y:/William/GitHub/Remnants-of-charcoal-kilns/Topographical_indicies.py Y:/William/Kolbottnar/data/selected_dems/ Y:/William/Kolbottnar/data/topographical_indicies/hillshade/ Y:/William/Kolbottnar/data/topographical_indicies/slope/ Y:/William/Kolbottnar/data/topographical_indicies/hpmf/
 
-## Split data into chips
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/split_training_data.py Y:/William/Kolbottnar/data/topographical_indicies/hillshade R:/Temp/split_hillshade --tile_size 256
+## Split tiles into smaller image chips
+Split hillshade
 
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/split_training_data.py Y:/William/Kolbottnar/data/topographical_indicies/hillshade Y:/William/Kolbottnar/data/split_data/hillshade/ --tile_size 256
+
+Split slope
+
+split high pass median filter
+
+Split labels
 python Y:/William/GitHub/Remnants-of-charcoal-kilns/split_training_data.py Y:/William/Kolbottnar/data/label_tiles R:/Temp/split_labels --tile_size 256
 
 ## Select chips with labeled pixels
