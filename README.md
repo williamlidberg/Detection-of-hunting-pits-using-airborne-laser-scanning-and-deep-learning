@@ -14,7 +14,9 @@ conda install -c anaconda pandas -y
 conda install -c anaconda scikit-learn -y
 conda install -c conda-forge gdal -y
 pip uninstall h5py 
-pip install h5py 
+pip install h5py
+conda install geopandas -y
+
 ## Select 0.5 m dem tiles based on locatiaon of training data
 python Y:/William/GitHub/Remnants-of-charcoal-kilns/Select_study_areas.py D:/kolbottnar/Kolbottnar.shp Y:/William/Kolbottnar/data/footprint/Footprint.shp F:/DitchNet/HalfMeterData/dem05m/ Y:/William/Kolbottnar/data/selected_dems/
 
@@ -42,10 +44,10 @@ python Y:/William/GitHub/Remnants-of-charcoal-kilns/train.py R:/Temp/selected_ch
 python Y:/William/GitHub/Remnants-of-charcoal-kilns/evaluate_model.py R:/Temp/selected_chips/images/ R:/Temp/selected_chips/labels/ Y:/William/Kolbottnar/logs/log33/valid_imgs.txt Y:/William/Kolbottnar/logs/log33/test.h5 Y:/William/Kolbottnar/logs/log33/evaluation.csv --wo_crf
 
 ## Run inference
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/inference.py Y:/William/Kolbottnar/data/topographical_indicies/hillshade/ Y:/William/Kolbottnar/logs/log33/test.h5 R:/Temp/inference/ --img_type=tif --tile_size=256 --wo_crf
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/inference.py Y:/William/Kolbottnar/data/topographical_indicies/hillshade/ Y:/William/Kolbottnar/logs/log33/test.h5 R:/Temp/inference/ --tile_size=256 --wo_crf
 
-## convert raster to vector polygons
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/post_processing.py R:/Temp/inference/ R:/Temp/post_processing/raw_polygons/
+## postprocessing
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/post_processing.py R:/Temp/inference/ R:/Temp/post_processing/raw_polygons/ R:/Temp/post_processing/filtered_polygons/ --min_area=400 --min_ratio=-0.3
 
 ## Docker
 Build container

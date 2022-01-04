@@ -3,63 +3,66 @@ import argparse
 import whitebox
 wbt = whitebox.WhiteboxTools()
 from osgeo import ogr
+import geopandas as gpd
+parser = argparse.ArgumentParser(description='Post-process predictions to vector polygons')
 
-parser = argparse.ArgumentParser(description='Extract topogrpahical incides from DEMs. ')
-def calculate_area(shapefile):
-    daShapefile = shapefile #path where your shape file is present 
+def raster_to_polygon(img_name, vector_polygons):
+    wbt.raster_to_vector_polygons(
+    i = img_name, 
+    output = vector_polygons)
 
+def calculate_attributes(vector_polygons):
+    # use geopandas to create area column instead of gdal
+    wbt.perimeter_area_ratio(vector_polygons)
     driver = ogr.GetDriverByName('ESRI Shapefile')
+    dataSource = driver.Open(vector_polygons,1) # 0 means read-only. 1 means writeable.
 
-    dataSource = driver.Open(daShapefile,1) # 0 means read-only. 1 means writeable.
-
-    # Check to see if shapefile is found.
     if dataSource is None:
-        print ('Could not open %s' % (daShapefile))
+        print ('Could not open %s' % (vector_polygons))
     else:
-        print ('Opened %s' % (daShapefile))
+        print ('Opened %s' % (vector_polygons))
         layer = dataSource.GetLayer()
-        featureCount = layer.GetFeatureCount()
-        print ("Number of features in %s: %d" % (os.path.basename(daShapefile),featureCount))
-        print ("\n")
-
 
     new_field = ogr.FieldDefn("Area", ogr.OFTReal)
     new_field.SetWidth(32)
-    new_field.SetPrecision(2) #added line to set precision
+    new_field.SetPrecision(2)
     layer.CreateField(new_field)
 
     for feature in layer:
         geom = feature.GetGeometryRef()
         area = geom.GetArea() 
-        print (area)
         feature.SetField("Area", area)
         layer.SetFeature(feature)
 
-def main(input_path, output_polyons):
+def delete_features(vector_polygons, min_area, min_ratio, vector_polygons_processed):
+    polygons = gpd.read_file(vector_polygons)
+    mask = (polygons.area > min_area) & (polygons.P_A_RATIO > min_ratio)
+    try:
+        selected_polygons = polygons.loc[mask]
+        selected_polygons.to_file(vector_polygons_processed)
+    except:
+        print(vector_polygons,'failed for some reason')
 
+def main(input_path, output_raw_polyons, output_polygons, min_area, min_ratio):
     # setup paths
     if not os.path.exists(input_path):
         raise ValueError('Input path does not exist: {}'.format(input_path))
     if os.path.isdir(input_path):
         imgs = [os.path.join(input_path, f) for f in os.listdir(input_path)
                 if f.endswith('.tif')]
-
     else:
         imgs = [input_path]
 
     
     for img_path in imgs:
-        predicted = []
-        print(img_path)
-        img_name = os.path.basename(img_path).split('.')[0]
+        img_name = os.path.basename(img_path).split('.')[0]        
+        vector_polygons =  os.path.join(output_raw_polyons,'{}.{}'.format(img_name, 'shp'))
+        vector_polygons_processed = os.path.join(output_polygons,'{}.{}'.format(img_name, 'shp'))
         
-        vector_polygons =  os.path.join(output_polyons,'{}.{}'.format(img_name, 'shp'))
+        raster_to_polygon(img_path, vector_polygons)
+        calculate_attributes(vector_polygons)
+        delete_features(vector_polygons, min_area, min_ratio, vector_polygons_processed)
 
-        wbt.raster_to_vector_polygons(
-            i = img_path, 
-            output = vector_polygons
-        )
-        calculate_area(vector_polygons)
 if __name__ == '__main__':
     import argparse
 
@@ -68,6 +71,9 @@ if __name__ == '__main__':
                                    'image(s)',
                        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('input_path', help='Path to dem or folder of dems')
-    parser.add_argument('output_polyons', help = 'directory to store output polyons')
+    parser.add_argument('output_raw_polyons', help = 'directory to store output polyons')
+    parser.add_argument('output_polygons', help='output processed polygons')
+    parser.add_argument('--min_area', help= 'smallest detected polygon in square meters', type=int, default=250)
+    parser.add_argument('--min_ratio', help= 'smallest perimiter area ratio', type=float, default=-0.3)
     args = vars(parser.parse_args())
     main(**args)
