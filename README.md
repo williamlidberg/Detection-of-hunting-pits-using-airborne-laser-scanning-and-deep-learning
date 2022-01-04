@@ -27,16 +27,17 @@ python Y:/William/GitHub/Remnants-of-charcoal-kilns/create_labels.py Y:/William/
 ## Extract topographical indices from dem tiles
 python Y:/William/GitHub/Remnants-of-charcoal-kilns/Topographical_indicies.py Y:/William/Kolbottnar/data/selected_dems/ Y:/William/Kolbottnar/data/topographical_indicies/hillshade/ Y:/William/Kolbottnar/data/topographical_indicies/slope/ Y:/William/Kolbottnar/data/topographical_indicies/hpmf/
 
-## Split tiles into smaller image chips
-Split hillshade
-
+## Split tiles into smaller image chips (ry to split tiles into 500 x 500 pixel chips to avoid overlap)
+**Split hillshade**
 python Y:/William/GitHub/Remnants-of-charcoal-kilns/split_training_data.py Y:/William/Kolbottnar/data/topographical_indicies/hillshade Y:/William/Kolbottnar/data/split_data/hillshade/ --tile_size 256
 
-Split slope
+**Split slope**
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/split_training_data.py Y:/William/Kolbottnar/data/topographical_indicies/slope Y:/William/Kolbottnar/data/split_data/slope/ --tile_size 256
 
-split high pass median filter
+**split high pass median filter**
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/split_training_data.py Y:/William/Kolbottnar/data/topographical_indicies/hpmf Y:/William/Kolbottnar/data/split_data/hpmf/ --tile_size 256
 
-Split labels
+**Split labels**
 python Y:/William/GitHub/Remnants-of-charcoal-kilns/split_training_data.py Y:/William/Kolbottnar/data/label_tiles R:/Temp/split_labels --tile_size 256
 
 ## Select chips with labeled pixels
