@@ -3,23 +3,23 @@ Detect remnants of charcoal kilns from LiDAR data
 
 ![alt text](BlackWhite_large_zoom_wide2.png)
 
-## Anaconda -python 3.8.12
-**Not sure whats going on with h5py, will fix in container later**
-pip install tensorflow==2.5.0
-pip install whitebox==2.0.3
-conda install cudatoolkit=11.3.1 -c conda-forge -y
-conda install -c conda-forge cudnn=8.2.1 -y
-conda install -c conda-forge opencv -y
-conda install -c conda-forge tifffile -y
-conda install -c anaconda pandas -y
-conda install -c anaconda scikit-learn -y
-conda install -c conda-forge gdal -y
-pip uninstall h5py 
-pip install h5py # had to reinstall for the training to work
-conda install geopandas -y
-pip install splitraster
-conda install h5py -y # had to use conda for inference to work
-conda uninstall h5py -y # honestly dont remember. will fix later.
+## Anaconda -python 3.8.12  
+**Not sure whats going on with h5py, will fix in container later**  
+pip install tensorflow==2.5.0  
+pip install whitebox==2.0.3  
+conda install cudatoolkit=11.3.1 -c conda-forge -y  
+conda install -c conda-forge cudnn=8.2.1 -y  
+conda install -c conda-forge opencv -y  
+conda install -c conda-forge tifffile -y  
+conda install -c anaconda pandas -y  
+conda install -c anaconda scikit-learn -y  
+conda install -c conda-forge gdal -y  
+pip uninstall h5py   
+pip install h5py # had to reinstall for the training to work  
+conda install geopandas -y  
+pip install splitraster  
+conda install h5py -y # had to use conda for inference to work  
+conda uninstall h5py -y # honestly dont remember. will fix later.  
 
 ## Select 0.5 m dem tiles based on locatiaon of training data
 python Y:/William/GitHub/Remnants-of-charcoal-kilns/Select_study_areas.py D:/kolbottnar/Kolbottnar.shp Y:/William/Kolbottnar/data/footprint/Footprint.shp F:/DitchNet/HalfMeterData/dem05m/ Y:/William/Kolbottnar/data/selected_dems/
