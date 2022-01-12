@@ -3,7 +3,7 @@ Detect remnants of charcoal kilns from LiDAR data
 
 ![alt text](BlackWhite_large_zoom_wide2.png)
 
-## Anaconeda -python 3.8.12
+## Anaconda -python 3.8.12
 **Not sure whats going on with h5py, will fix in container later**
 pip install tensorflow==2.5.0
 pip install whitebox==2.0.3
