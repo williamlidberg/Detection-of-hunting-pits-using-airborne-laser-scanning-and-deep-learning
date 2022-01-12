@@ -3,7 +3,6 @@ import utils.unet
 import numpy as np
 import pandas as pd
 import sklearn.metrics
-from math import sqrt
 
 def perf_measure(gt, pred):
     pred = np.round(pred).astype(int).flatten()
@@ -22,12 +21,8 @@ def perf_measure(gt, pred):
            TN += 1
         if pred[i]==0 and gt[i]!=pred[i]:
            FN += 1
-
     return(TP, FP, TN, FN)
 
-def mcc(tp, fp, tn, fn):
-    x = (tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)
-    return (((tp * tn) - (fp * fn))/sqrt(x))
 
 def evaluate(pred, gt):
     pred = np.round(pred).astype(int).flatten()
@@ -55,7 +50,6 @@ def main(img_path, gt_path, selected_imgs, model_path, out_path, wo_crf, depth):
         unet = utils.unet.XceptionUNetCRF(valid_gen.input_shape, iterations=20)
         unet.crf_model.load_weights(model_path)
         model = unet.crf_model
-
     results = {'fmes': [], 'acc': [], 'rec': [], 'jacc': [], 'TP': [], 'FP': [], 'TN': [], 'FN': [], 'kappa': [], 'mcc': []}
     valid_it = iter(valid_gen)
 
@@ -91,11 +85,7 @@ def main(img_path, gt_path, selected_imgs, model_path, out_path, wo_crf, depth):
     mean_mcc = df['mcc'].mean()
     print('mcc: ', mean_mcc)
     df.to_csv(out_path, index=False)
-    #mcc(total_TP, total_FP, total_TN, total_FN)
-    
-
-
-
+   
 
 if __name__ == '__main__':
     import argparse

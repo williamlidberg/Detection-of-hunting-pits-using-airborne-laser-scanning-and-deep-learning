@@ -92,9 +92,7 @@ class DataGenerator(tf.keras.utils.Sequence):
         weights = []
 
         for img_path, gt_path in batch:
-            # img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
             img = tifffile.imread(img_path)
-            # gt = cv2.imread(gt_path, cv2.IMREAD_GRAYSCALE)
             gt = tifffile.imread(gt_path)
 
             if self.augment:
@@ -111,12 +109,12 @@ class DataGenerator(tf.keras.utils.Sequence):
                 #                                                     self.rng)
             #
             # # img = img.astype(np.float32) / 255.
-            img = img.astype(np.float32)
+            img = img.astype(np.float32)*100
             X.append(img.reshape(self.input_shape))
             # y.append(gt.reshape(self.input_shape))
             gt_new = np.zeros(2 * gt.shape[0] *
                               gt.shape[1]).reshape((*gt.shape, 2))
-            # non-ditch image
+            # none kiln image
             gt_new[:, :, 0] = 1 - gt
             # ditch image
             gt_new[:, :, 1] = gt

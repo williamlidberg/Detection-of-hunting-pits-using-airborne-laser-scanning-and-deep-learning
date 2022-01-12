@@ -1,6 +1,7 @@
 import os
 import argparse
 import whitebox
+import normalize_indices
 wbt = whitebox.WhiteboxTools()
 
 parser = argparse.ArgumentParser(description='Extract topogrpahical incides from DEMs. ')
@@ -23,9 +24,9 @@ def main(input_path, output_path_hillshade, output_path_slope, output_path_hpmf)
         print(img_path)
         img_name = os.path.basename(img_path).split('.')[0]
         
-        hillshade =  os.path.join(output_path_hillshade,'{}.{}'.format(img_name, '.tif'))
-        slope = os.path.join(output_path_slope,'{}.{}'.format(img_name, '.tif'))
-        high_pass_median_filter = os.path.join(output_path_hpmf,'{}.{}'.format(img_name, '.tif'))
+        hillshade =  os.path.join(output_path_hillshade,'{}.{}'.format(img_name, 'tif'))
+        slope = os.path.join(output_path_slope,'{}.{}'.format(img_name, 'tif'))
+        high_pass_median_filter = os.path.join(output_path_hpmf,'{}.{}'.format(img_name, 'tif'))
 
         wbt.multidirectional_hillshade(
             dem = img_path, 
@@ -39,7 +40,7 @@ def main(input_path, output_path_hillshade, output_path_slope, output_path_hpmf)
             dem = img_path, 
             output = slope, 
             zfactor=None, 
-            units="degrees"
+            units= 'degrees'
         )
 
         wbt.high_pass_median_filter(
@@ -49,6 +50,7 @@ def main(input_path, output_path_hillshade, output_path_slope, output_path_hpmf)
             filtery=11, 
             sig_digits=2
         )
+
 
 if __name__ == '__main__':
     import argparse
