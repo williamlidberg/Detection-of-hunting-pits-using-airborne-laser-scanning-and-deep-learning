@@ -48,7 +48,7 @@ python Y:/William/GitHub/Remnants-of-charcoal-kilns/split_training_data.py Y:/Wi
 **Split labels**   
 python Y:/William/GitHub/Remnants-of-charcoal-kilns/split_training_data.py Y:/William/Kolbottnar/data/label_tiles/ Y:/William/Kolbottnar/data/split_data/labels/ --tile_size 256
 
-## Select chips with labeled pixels (This could be reworked to delete no label chips instead of copying hips with labels)
+## Select chips with labeled pixels (This could be reworked to delete no label chips instead of copying chips with labels)
 **Select hillshade**  
 python Y:/William/GitHub/Remnants-of-charcoal-kilns/Select_chips_with_labels.py Y:/William/Kolbottnar/data/split_data/hillshade/ Y:/William/Kolbottnar/data/split_data/labels/ Y:/William/Kolbottnar/data/selected_data/hillshade/ 1 Y:/William/Kolbottnar/data/selected_data/labels/
 
