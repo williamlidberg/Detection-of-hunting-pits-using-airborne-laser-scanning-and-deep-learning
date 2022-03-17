@@ -14,7 +14,8 @@ conda install -c conda-forge tifffile -y
 conda install -c anaconda pandas -y  
 conda install -c anaconda scikit-learn -y  
 conda install -c conda-forge gdal -y  
-conda install geopandas - y
+conda install geopandas
+
 pip install splitraster  
 conda install h5py -y
 
