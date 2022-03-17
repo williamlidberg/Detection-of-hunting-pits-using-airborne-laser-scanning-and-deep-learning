@@ -85,7 +85,7 @@ python Y:/William/GitHub/Remnants-of-charcoal-kilns/train.py Y:/William/Kolbottn
 python Y:/William/GitHub/Remnants-of-charcoal-kilns/evaluate_model.py Y:/William/Kolbottnar/data/selected_data/hillshade/ Y:/William/Kolbottnar/data/selected_data/labels/ Y:/William/Kolbottnar/logs/log43/valid_imgs.txt Y:/William/Kolbottnar/logs/log43/test.h5 Y:/William/Kolbottnar/logs/log43/evaluation.csv --wo_crf
 
 ## Run inference
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/inference.py Y:/William/Kolbottnar/data/topographical_indicies/hillshade/ Y:/William/Kolbottnar/logs/log34/test.h5 R:/Temp/inference2/ --tile_size=256 --wo_crf
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/inference.py Y:/William/Kolbottnar/data/topographical_indices/hillshade/ Y:/William/Kolbottnar/logs/log34/test.h5 D:/kolbottnar/inference/34_inference/ --tile_size=256 --wo_crf
 
 ## postprocessing
 **min_area** is extracted from the smallest kiln in the training data.  
