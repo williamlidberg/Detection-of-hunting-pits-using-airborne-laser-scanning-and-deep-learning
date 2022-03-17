@@ -94,7 +94,7 @@ python Y:/William/GitHub/Remnants-of-charcoal-kilns/inference.py Y:/William/Kolb
 **min_area** is extracted from the smallest kiln in the training data.  
 **min_ratio** is the perimeter to area ratio of the vector polygons. -0.3 is based on the training data.  
 
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/post_processing.py R:/Temp/inference2/ R:/Temp/post_processing/raw_polygons/ R:/Temp/post_processing/filtered_polygons/ --min_area=400 --min_ratio=-0.3
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/post_processing.py D:/kolbottnar/inference/34_inference/ D:/kolbottnar/inference/34_post_processing/raw_polygons/ D:/kolbottnar/inference/34_post_processing/filtered_polygons/ --min_area=400 --min_ratio=-0.3
 
 ## Docker - needs an update
 Build container  
