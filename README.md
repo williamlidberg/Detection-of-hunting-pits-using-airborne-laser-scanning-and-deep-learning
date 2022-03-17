@@ -16,6 +16,7 @@ conda install -c anaconda scikit-learn -y
 conda install -c conda-forge gdal -y  
 conda install geopandas - y
 pip install splitraster  
+conda install h5py -y
 
 pip uninstall h5py   
 pip install h5py # had to reinstall for the training to work  
