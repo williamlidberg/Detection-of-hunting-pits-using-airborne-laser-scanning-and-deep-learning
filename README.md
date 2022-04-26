@@ -6,7 +6,43 @@ Detect remnants of charcoal kilns from LiDAR data
 # Docker
 **Set up a docker container with a ramdisk**
 docker build -t cultural .
-docker run -it --mount type=bind,source=/mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns/,target=/code --mount type=bind,source=/mnt/Extension_100TB/William/Projects/Cultural_remains/data/,target=/data --mount type=bind,source=/mnt/ramdisk/,target=/temp cultural
+
+docker run -it --gpus all --mount type=bind,source=/mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns/,target=/code --mount type=bind,source=/mnt/Extension_100TB/William/Projects/Cultural_remains/data/,target=/data --mount type=bind,source=/mnt/ramdisk/,target=/temp cultural
+
+## Select 0.5 m dem tiles based on locatiaon of training data
+**needs new dem**  
+python /code/Remnants-of-charcoal-kilns/Select_study_areas.py /data/charcoal_kilns/Kolbottnar.shp /data/Footprint.shp F:/DitchNet/HalfMeterData/dem05m/ Y:/William/Kolbottnar/data/selected_dems/
+
+## Convert field observations to labeled tiles  
+python /code/create_labels.py /data/selected_dems/ /data/charcoal_kilns/charcoal_kilns_buffer.shp /data/label_tiles/
+
+python /code/Topographical_indicies.py //data/selected_dems/ /data/topographical_indices/hillshade/ /data/topographical_indices/slope/ /data/topographical_indices/hpmf/
+
+**normalize topographical indices**  
+python /code/normalize_indices.py /data/topographical_indices/hillshade/ /data/topographical_indices_normalized/hillshade/ /data/topographical_indices/slope/ /data/topographical_indices_normalized/slope/ /data/topographical_indices/hpmf/ /data/topographical_indices_normalized/hpmf/
+
+## Split tiles into smaller image chips make sure the directory is empty/new so the split starts at 1 each time.  
+**Split hillshade**  
+python /code/split_training_data.py /data/topographical_indices_normalized/hillshade/ /data/split_data/hillshade/ --tile_size 256
+
+**Split slope**  
+python /code/split_training_data.py /data/topographical_indices_normalized/slope/ /data/split_data/slope/ --tile_size 256
+
+**split high pass median filter**  
+python /code/split_training_data.py /data/topographical_indices_normalized/hpmf/ /data/split_data/hpmf/ --tile_size 256
+
+**Split labels**   
+python /code/split_training_data.py /data/label_tiles/ /data/split_data/labels/ --tile_size 256
+
+## Select chips with labeled pixels (This could be reworked to delete no label chips instead of copying chips with labels)
+**Select hillshade**  
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/Select_chips_with_labels.py Y:/William/Kolbottnar/data/split_data/hillshade/ Y:/William/Kolbottnar/data/split_data/labels/ Y:/William/Kolbottnar/data/selected_data/hillshade/ 1 Y:/William/Kolbottnar/data/selected_data/labels/
+
+**Select slope**  
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/Select_chips_with_labels.py Y:/William/Kolbottnar/data/split_data/slope/ Y:/William/Kolbottnar/data/split_data/labels/ Y:/William/Kolbottnar/data/selected_data/slope/ 1 Y:/William/Kolbottnar/data/selected_data/labels/
+
+**Select high pass median filter**  
+python Y:/William/GitHub/Remnants-of-charcoal-kilns/Select_chips_with_labels.py Y:/William/Kolbottnar/data/split_data/hpmf/ Y:/William/Kolbottnar/data/split_data/labels/ Y:/William/Kolbottnar/data/selected_data/hpmf/ 1 Y:/William/Kolbottnar/data/selected_data/labels/
 
 ## Anaconda -python 3.8.12  
 **Not sure whats going on with h5py, will fix in container later**  
@@ -30,42 +66,15 @@ pip install h5py # had to reinstall for the training to work
 conda install h5py -y # had to use conda for inference to work  
 conda uninstall h5py -y # honestly dont remember. will fix later.  
 
-## Select 0.5 m dem tiles based on locatiaon of training data  
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/Select_study_areas.py D:/kolbottnar/Kolbottnar.shp Y:/William/Kolbottnar/data/footprint/Footprint.shp F:/DitchNet/HalfMeterData/dem05m/ Y:/William/Kolbottnar/data/selected_dems/
-
-## Convert field observations to labeled tiles  
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/create_labels.py Y:/William/Kolbottnar/data/selected_dems/ Y:/William/GitHub/Remnants-of-charcoal-kilns/data/charcoal_kilns_buffer.shp Y:/William/Kolbottnar/data/label_tiles/
-
-## Topographical indices  
-**Extract topographical indices from dem tiles**  
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/Topographical_indicies.py Y:/William/Kolbottnar/data/selected_dems/ Y:/William/Kolbottnar/data/topographical_indices/hillshade/ Y:/William/Kolbottnar/data/topographical_indices/slope/ Y:/William/Kolbottnar/data/topographical_indices/hpmf/
-
-**normalize topographical indices**  
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/normalize_indices.py Y:/William/Kolbottnar/data/topographical_indices/hillshade/ Y:/William/Kolbottnar/data/topographical_indices_normalized/hillshade/ Y:/William/Kolbottnar/data/topographical_indices/slope/ Y:/William/Kolbottnar/data/topographical_indices_normalized/slope/ Y:/William/Kolbottnar/data/topographical_indices/hpmf/ Y:/William/Kolbottnar/data/topographical_indices_normalized/hpmf/
 
 
-## Split tiles into smaller image chips make sure the directory is empty/new so the split starts at 1 each time.  
-**Split hillshade**  
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/split_training_data.py Y:/William/Kolbottnar/data/topographical_indices_normalized/hillshade/ Y:/William/Kolbottnar/data/split_data/hillshade/ --tile_size 256
 
-**Split slope**  
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/split_training_data.py Y:/William/Kolbottnar/data/topographical_indices_normalized/slope/ Y:/William/Kolbottnar/data/split_data/slope/ --tile_size 256
 
-**split high pass median filter**  
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/split_training_data.py Y:/William/Kolbottnar/data/topographical_indices_normalized/hpmf/ Y:/William/Kolbottnar/data/split_data/hpmf/ --tile_size 256
 
-**Split labels**   
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/split_training_data.py Y:/William/Kolbottnar/data/label_tiles/ Y:/William/Kolbottnar/data/split_data/labels/ --tile_size 256
 
-## Select chips with labeled pixels (This could be reworked to delete no label chips instead of copying chips with labels)
-**Select hillshade**  
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/Select_chips_with_labels.py Y:/William/Kolbottnar/data/split_data/hillshade/ Y:/William/Kolbottnar/data/split_data/labels/ Y:/William/Kolbottnar/data/selected_data/hillshade/ 1 Y:/William/Kolbottnar/data/selected_data/labels/
 
-**Select slope**  
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/Select_chips_with_labels.py Y:/William/Kolbottnar/data/split_data/slope/ Y:/William/Kolbottnar/data/split_data/labels/ Y:/William/Kolbottnar/data/selected_data/slope/ 1 Y:/William/Kolbottnar/data/selected_data/labels/
 
-**Select high pass median filter**  
-python Y:/William/GitHub/Remnants-of-charcoal-kilns/Select_chips_with_labels.py Y:/William/Kolbottnar/data/split_data/hpmf/ Y:/William/Kolbottnar/data/split_data/labels/ Y:/William/Kolbottnar/data/selected_data/hpmf/ 1 Y:/William/Kolbottnar/data/selected_data/labels/
+
 
 
 
