@@ -1,42 +1,106 @@
 # implementation adapted from:
 # https://keras.io/examples/vision/oxford_pets_image_segmentation/
 
+import numpy as np
 from tensorflow import keras
 from tensorflow.keras import layers
+
+from crfrnn_layer import CrfRnnLayer # don't forget to add this to path: export PYTHONPATH=/home/william/Downloads/crfasrnn_keras-master/src/:$PYTHONPATH
 
 
 class XceptionUNet(object):
 
-    def __init__(self, input_shape, depth=None, activation='softmax'):
+    def __init__(self, input_shape, depth=None, activation='softmax',
+                 classes=2, entry_block=True, first_core_filters=128):
+        '''Initialize Xception Unet
+        Parameters
+        ----------
+        input_shape : Shape of the input images
+        depth : Number of downsampling and corresponding upsampling layers,
+                optional
+        activation : Activation function to use in the hidden layers, optional
+        classes : Number of target classes, optional
+        entry_block : Process input image by a CNN before starting the
+                      downsampling with its separated convolutions, optional
+        first_core_filters : Number of filters to use in first downsampling
+                             block - determines the filter sizes in all
+                             subsequent layers, optional
+        Returns
+        -------
+        Initialized model object
+        '''
         self.input_shape = input_shape
 
         depth = 2 if depth is None else depth
         self.activation = activation
-        self.classes = 2
-        self.__set_depth(depth)
+        self.classes = classes
+        self.entry_block = entry_block
+        self.__set_depth(depth, first_core_filters)
+        self.padding = self.__compute_padding(self.input_shape, depth, self.entry_block)
         self.model = self.__setup_model()
 
-    def __set_depth(self, depth):
-        self.down_sample = [2**i for i in range(6, 6+depth)]
-        #self.down_sample = [2**i for i in range(7, 7+depth)]
-        #self.down_sample = [2**i for i in range(8, 8+depth)]
+    def __pad(self, size, downsampling_steps):
+        div, rest = divmod(size, 2**downsampling_steps)
+        if rest == 0:
+            return (0, 0)
+        else:
+            padded = 2**downsampling_steps * (div + 1)
+            padding = padded - size
+            a = padding // 2
+            b = padding - a
+            return (a, b)
+
+    def __compute_padding(self, input_shape, depth, entry_block):
+        downsampling_steps = depth
+        if entry_block:
+            downsampling_steps += 1
+        x, y, _ = input_shape
+        l_r = self.__pad(x, downsampling_steps)
+        t_b = self.__pad(y, downsampling_steps)
+
+        return t_b, l_r
+        
+
+    def __set_depth(self, depth, first_core_filters):
+        # setup filter list for downsampling
+        start = np.log2(first_core_filters)
+        start = int(start)
+        self.down_sample = [2**i for i in range(start, start+depth)]
         # for deeper networks, reduce number of kernels to fit model into GPU
         # memory
-        if depth == 3:
-            self.down_sample[2] = self.down_sample[2] // 2
+        if depth >= 3:
+            for i in range(2, len(self.down_sample)):
+                self.down_sample[i] = self.down_sample[i] // 2
+
+        # start downsampling with 32 filters if no CNN comes before the
+        # downsampling block - keep configured depth
+        if not self.entry_block:
+            length = len(self.down_sample)
+            self.down_sample.insert(0, 32)
+            self.down_sample = self.down_sample[:length]
+
+        # setup filter list for upsampling
         self.up_sample = self.down_sample.copy()
         self.up_sample.reverse()
-        self.up_sample.append(32)
+
+        # add one more upsampling layer to compensate for initial CNN before
+        # downsampling block
+        if self.entry_block:
+            self.up_sample.append(32)
 
     def __setup_model(self):
         inputs = keras.Input(shape=self.input_shape)
 
         # -- [First half of the network: downsampling inputs] -- #
 
+        # add padding
+        x = layers.ZeroPadding2D(padding=self.padding)(inputs)
+
         # Entry block
-        x = layers.Conv2D(32, 3, strides=2, padding="same")(inputs)
-        x = layers.BatchNormalization()(x)
-        x = layers.Activation("relu")(x)
+        if self.entry_block:
+            x = layers.Conv2D(32, 3, strides=2, padding="same")(x)
+            x = layers.BatchNormalization()(x)
+            x = layers.Activation("relu")(x)
 
         previous_block_activation = x  # Set aside residual
 
@@ -83,6 +147,8 @@ class XceptionUNet(object):
         #                        padding="same")(x)
         outputs = layers.Conv2D(self.classes, 3, activation=self.activation,
                                 padding="same")(x)
+        # remove padding
+        outputs = layers.Cropping2D(cropping=self.padding)(outputs)
         # reshape to make loss weighting possible
         outputs = layers.Reshape((-1, self.classes))(outputs)
 

@@ -3,6 +3,11 @@ Detect remnants of charcoal kilns from LiDAR data
 
 ![alt text](BlackWhite_large_zoom_wide2.png)
 
+# Docker
+**Set up a docker container with a ramdisk**
+docker build -t cultural .
+docker run -it --mount type=bind,source=/mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns/,target=/code --mount type=bind,source=/mnt/Extension_100TB/William/Projects/Cultural_remains/data/,target=/data --mount type=bind,source=/mnt/ramdisk/,target=/temp cultural
+
 ## Anaconda -python 3.8.12  
 **Not sure whats going on with h5py, will fix in container later**  
 conda install cudatoolkit=11.3.1 -c conda-forge -y
