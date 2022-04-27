@@ -7,7 +7,13 @@ Detect remnants of charcoal kilns from LiDAR data
 **Set up a docker container with a ramdisk**
 docker build -t cultural .
 
-docker run -it --gpus all --mount type=bind,source=/mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns/,target=/code --mount type=bind,source=/mnt/Extension_100TB/William/Projects/Cultural_remains/data/,target=/data --mount type=bind,source=/mnt/ramdisk/,target=/temp cultural
+
+**Run notebook**
+screen -S notebook
+
+docker run -it -p 8888:8888 --gpus all --mount type=bind,source=/mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns/,target=/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp cultural:latest
+
+jupyter notebook --ip=0.0.0.0 --no-browser --allow-root
 
 ## Select 0.5 m dem tiles based on locatiaon of training data
 **needs new dem**  

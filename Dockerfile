@@ -15,6 +15,7 @@ RUN pip install geopandas==0.10.2
 RUN pip install splitraster==0.3.2
 #RUN pip install imageio==2.15.0
 RUN pip install rasterio==1.2.10 
+RUN pip install leafmap==0.9.1
 RUN echo "Installed python packages!"
 
 RUN add-apt-repository ppa:ubuntugis/ppa && apt-get update
@@ -24,3 +25,4 @@ RUN export CPLUS_INCLUDE_PATH=/usr/include/gdal
 RUN export C_INCLUDE_PATH=/usr/include/gdal
 RUN pip install GDAL
 RUN echo "Gdal installed!"
+
