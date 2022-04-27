@@ -11,13 +11,13 @@ docker build -t cultural .
 **Run notebook**
 screen -S notebook
 
-docker run -it -p 8888:8888 --gpus all --mount type=bind,source=/mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns/,target=/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp cultural:latest
+docker run -it -p 8888:8888 --gpus all --mount type=bind,source=/mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns/,target=/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog/dem05m:/workspace/lidar cultural:latest
 
 jupyter notebook --ip=0.0.0.0 --no-browser --allow-root
 
 ## Select 0.5 m dem tiles based on locatiaon of training data
 **needs new dem**  
-python /code/Remnants-of-charcoal-kilns/Select_study_areas.py /data/charcoal_kilns/Kolbottnar.shp /data/Footprint.shp F:/DitchNet/HalfMeterData/dem05m/ Y:/William/Kolbottnar/data/selected_dems/
+python /workspace/code/Remnants-of-charcoal-kilns/Select_study_areas.py workspace/data/charcoal_kilns/Merged_charcoal_kilns_william.shp /workspace/data/Footprint.shp /workspace/lidar/ /workspace/data/selected_dems/
 
 ## Convert field observations to labeled tiles  
 python /code/create_labels.py /data/selected_dems/ /data/charcoal_kilns/charcoal_kilns_buffer.shp /data/label_tiles/
