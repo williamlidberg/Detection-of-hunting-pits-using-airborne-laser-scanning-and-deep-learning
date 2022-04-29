@@ -14,7 +14,7 @@ def main(input_path, output_path, tile_size):
     else:
         imgs = [input_path]
 
-    
+    imgs.sort()
     for input_image_path in imgs:
         n = geo.split_image(input_image_path, output_path, tile_size, repetition_rate=0, overwrite=False)
         print(f"{n} tiles sample of {input_image_path} are added at {output_path}")

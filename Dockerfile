@@ -7,6 +7,7 @@ RUN pip install --upgrade pip
 
 RUN pip install whitebox==2.0.3
 #RUN pip install pillow
+RUN pip install matplotlib==3.5.1 
 RUN pip install opencv-python==4.5.5.64 
 RUN pip install tifffile==2022.4.26
 RUN pip install pandas==1.4.2 
