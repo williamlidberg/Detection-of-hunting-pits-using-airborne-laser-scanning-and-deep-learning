@@ -5,13 +5,15 @@ Detect remnants of charcoal kilns from LiDAR data
 
 # Docker
 **Set up a docker container with a ramdisk**
+
+Navigate to /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns/ and run:
 docker build -t cultural .
 
 
 **Run notebook**
 screen -S notebook
 
-docker run -it -p 8888:8888 --gpus all --mount type=bind,source=/mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns/,target=/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog/dem05m:/workspace/lidar cultural:latest
+docker run -it -p 8888:8888 -p 16006:16006 --gpus all --mount type=bind,source=/mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns/,target=/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog/dem05m:/workspace/lidar cultural:latest
 
 jupyter notebook --ip=0.0.0.0 --no-browser --allow-root
 
@@ -20,7 +22,7 @@ jupyter notebook --ip=0.0.0.0 --no-browser --allow-root
 python /workspace/code/Remnants-of-charcoal-kilns/Select_study_areas.py workspace/data/charcoal_kilns/Merged_charcoal_kilns_william.shp /workspace/data/Footprint.shp /workspace/lidar/ /workspace/data/selected_dems/
 
 ## Convert field observations to labeled tiles  
-python /code/create_labels.py /data/selected_dems/ /data/charcoal_kilns/charcoal_kilns_buffer.shp /data/label_tiles/
+python /code//utils/create_labels.py /data/selected_dems/ /data/charcoal_kilns/charcoal_kilns_buffer.shp /data/label_tiles/
 
 python /code/Topographical_indicies.py //data/selected_dems/ /data/topographical_indices/hillshade/ /data/topographical_indices/slope/ /data/topographical_indices/hpmf/
 
@@ -53,9 +55,22 @@ python /workspace/code/train.py -I /workspace/data/split_data/hillshade/ -I /wor
 
 
 
-**Set up tensorboard**  
-tensorboard --logdir Y:/William/Kolbottnar/logs/log42
+# The Moon
+## Data description
+Impact creaters from the moon were used to pre-train the model. These creaters were digitised by NASA and are avalible from the Moon Crater Database v1 Robbins:https://astrogeology.usgs.gov/search/map/Moon/Research/Craters/lunar_crater_database_robbins_2018 The database contains approximately 1.3 million lunar impact craters and is approximately complete for all craters larger than about 1–2 km in diameter. Craters were manually identified and measured on Lunar Reconnaissance Orbiter (LRO) Camera (LROC) Wide-Angle Camera (WAC) images, in LRO Lunar Orbiter Laser Altimeter (LOLA) topography, SELENE Kaguya Terrain Camera (TC) images, and a merged LOLA+TC DTM.
 
+
+The Moon LRO LOLA DEM 118m v1 was used as digital elevation model. This digital elevation model  is based on data from the Lunar Orbiter Laser Altimeter, an instrument on the National Aeronautics and Space Agency (NASA) Lunar Reconnaissance Orbiter (LRO) spacecraft. The created DEM represents more than 6.5 billion measurements gathered between July 2009 and July 2013, adjusted for consistency in the coordinate system described below, and then converted to lunar radii.
+Source: https://astrogeology.usgs.gov/search/details/Moon/LRO/LOLA/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014/cub
+
+## Crater selection
+The charcoal kilns in the trainig data were between x and y pixels with an average of z in diameter. Therefore creaters that were less than x pixels (of the lundar dem) were excluded. creaters larger than y pixels were resampled down to z pixels. The following criterias:
+
+    1. They can not overlap any nearby creaters.
+    2. They have to be about the same size range as charcoal kilns in number of pixels.
+    3. min and max lat and log values to avoid deformed craters?
+
+    
 
 # Old notes
 ## Train model - test with hillshade only  

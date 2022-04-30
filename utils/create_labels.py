@@ -3,9 +3,8 @@ import argparse
 import whitebox
 wbt = whitebox.WhiteboxTools()
 
-def main(base_file_path, input_observations, output_label_path):
-    
-    for f in os.listdir(base_file_path):
+def convert_polygon(base_file_path, input_observations, output_label_path):
+        for f in os.listdir(base_file_path):
         base = base_file_path + f
         label_tiles = output_label_path + f
         wbt.vector_polygons_to_raster(
@@ -16,6 +15,9 @@ def main(base_file_path, input_observations, output_label_path):
             cell_size=None, 
             base=base
         )
+
+def main(base_file_path, input_observations, output_label_path):
+    convert_polygon(base_file_path, input_observations, output_label_path)
 
 
 if __name__ == '__main__':
