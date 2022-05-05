@@ -1,3 +1,4 @@
+import cv2
 import os
 import numpy as np
 import tifffile
@@ -7,24 +8,28 @@ import utils.WriteGeotiff
 
 def patchify_x(img, start_y, patches, tile_size, margin, width):
     start_x = 0
+    _, _, bands = img.shape
     while start_x + tile_size <= width:
         patches.append(img[start_y:start_y+tile_size,
-                           start_x:start_x+tile_size].copy())
+                           start_x:start_x+tile_size, :].copy())
+        # subtract own margin and margin of previous patch, so that margin of
+        # previous patch is covered by the active area of the next patch
         start_x += tile_size - 2 * margin
-        assert patches[-1].shape == (tile_size, tile_size),\
+        assert patches[-1].shape == (tile_size, tile_size, bands),\
             'shape: {}'.format(patches[-1].shape)
     # handle right boarder
     if start_x < width:
         start_x = width - tile_size
         patches.append(img[start_y:start_y+tile_size,
-                           start_x:start_x+tile_size].copy())
-        assert patches[-1].shape == (tile_size, tile_size)
+                           start_x:start_x+tile_size, :].copy())
+        assert patches[-1].shape == (tile_size, tile_size, bands),\
+            'shape: {}'.format(patches[-1].shape)
 
 
 def patchify(img, tile_size, margin):
     patches = []
 
-    height, width = img.shape
+    height, width, bands = img.shape
     start_y = 0
     while start_y + tile_size <= height:
         patchify_x(img, start_y, patches, tile_size, margin, width)
@@ -52,8 +57,8 @@ def start_and_end(base, tile_size, margin, limit, remainder):
 
 
 def unpatchify(shape, patches, tile_size, margin):
-    img = np.zeros(shape)
-    height, width = shape
+    img = np.zeros(shape[:-1])
+    height, width, _ = shape
     remain_height = height % tile_size
     remain_width = width % tile_size
 
@@ -79,41 +84,58 @@ def unpatchify(shape, patches, tile_size, margin):
 
     return img
 
-def main(input_path, model_path, out_path_binary, tile_size, margin,
-         threshold, wo_crf):
+
+def read_input(bands):
+    '''Assemble input from list of provided tif files
+       inputs will be added in order in which they are provided
+    Parameters
+    ----------
+    bands : list of pathes to tif files
+    Returns
+    -------
+    Tensor of shape (input height, input width, number of bands)
+    '''
+    tmp = tifffile.imread(bands[0])
+    img = np.zeros([*tmp.shape, len(bands)])
+    for i, band in enumerate(bands):
+        tmp = tifffile.imread(band)
+        tmp = tmp.astype(np.float32)
+        img[:, :, i] = tmp
+
+    return img
+
+
+#def main(input_path, model_path, out_path, img_type, tile_size, margin,
+#         threshold, wo_crf):
+def main(img_path, model_path, out_path, img_type, tile_size, margin, 
+         depth, class_num, unet_mode):
 
     # setup paths
-    if not os.path.exists(input_path):
-        raise ValueError('Input path does not exist: {}'.format(input_path))
-    if os.path.isdir(input_path):
-        imgs = [os.path.join(input_path, f) for f in os.listdir(input_path)
-                if f.endswith('.tif')]
-
+    for path in img_path:
+        if not os.path.exists(path):
+            raise ValueError('Input path does not exist: {}'.format(path))
+    # assume that either folder or image is given for all channels
+    if os.path.isdir(img_path[0]):
+        imgs = []
+        for path in img_path:
+            tmp = [os.path.join(path, f) for f in os.listdir(path)
+                   if not f.startswith('._') and f.endswith('.tif')]
+            imgs.append(tmp)
     else:
-        imgs = [input_path]
-
-    # check tile size
-    if not wo_crf:
-        if tile_size != 512:
-            print('WARNING: setting tile size to 512')
-            tile_size = 512
+        imgs = [[f] for f in img_path]
 
     # load model
-    input_shape = (tile_size, tile_size, 1)
-    if wo_crf:
-        unet = utils.unet.XceptionUNet(input_shape)
-        unet.model.load_weights(model_path)
-        model = unet.model
-    else:
-        unet = utils.unet.XceptionUNetCRF(input_shape, iterations=20)
-        unet.crf_model.load_weights(model_path)
-        model = unet.crf_model
+    input_shape = (tile_size, tile_size, len(imgs))
+    unet = utils.unet.XceptionUNet(input_shape, depth=depth,
+                                   classes=class_num,
+                                   mode=unet_mode)
+    unet.model.load_weights(model_path)
+    model = unet.model
 
-    for img_path in imgs:
+    for bands in zip(*imgs):
         predicted = []
 
-        img = tifffile.imread(img_path)
-        img = img.astype(np.float32)
+        img = read_input(bands)
 
         # we do not need to patchify image if image is too small to be split
         # into patches - assume that img width == img height
@@ -124,15 +146,11 @@ def main(input_path, model_path, out_path_binary, tile_size, margin,
         else:
             patches = [img]
 
-        if wo_crf:
-            # find suitable batch size
-            for i in [8, 4, 2, 1]:
-                if len(patches) % i == 0:
-                    bs = i
-                    break
-        else:
-            # CRF can only deal with a batch size of 1
-            bs = 1
+        # find suitable batch size
+        for i in [8, 4, 2, 1]:
+            if len(patches) % i == 0:
+                bs = i
+                break
 
         # perform prediction
         for i in range(0, len(patches), bs):
@@ -140,23 +158,23 @@ def main(input_path, model_path, out_path_binary, tile_size, margin,
             batch = batch.reshape((bs, *input_shape))
             out = model.predict(batch)
             for o in out:
-                # get only ditch channel
-                o = o[:, 1]
-                predicted.append(o.reshape(input_shape[:-1]))
+                # choose id of output band with maximum probability
+                tmp = np.argmax(o, axis=-1)
+                predicted.append(tmp.reshape(input_shape[:-1]))
 
         if do_patchify:
             out = unpatchify(img.shape, predicted, tile_size, margin)
         else:
             out = predicted[0]
-        out[out < threshold] = 0
 
         # write image
-        img_name = os.path.basename(img_path).split('.')[0]
-        InutFileWithKnownExtent = gdal.Open(img_path)
-        #utils.WriteGeotiff.write_gtiff(out*100, InutFileWithKnownExtent, os.path.join(out_path_prob,'{}.{}'.format(img_name, img_type)))
-        utils.WriteGeotiff.write_gtiff((np.round(out)), InutFileWithKnownExtent, os.path.join(out_path_binary,'{}.{}'.format(img_name, '.tif')))
+        img_name = os.path.basename(bands[0]).split('.')[0]
+        InutFileWithKnownExtent = gdal.Open(bands[0])
+        utils.WriteGeotiff.write_gtiff(out, InutFileWithKnownExtent,
+                                       os.path.join(out_path,
+                                                    '{}.{}'.format(img_name,
+                                                                   img_type)))
         #cv2.imwrite(os.path.join(out_path,'{}.{}'.format(img_name, img_type)), out)
-
 
 
 if __name__ == '__main__':
@@ -166,17 +184,23 @@ if __name__ == '__main__':
                        description='Run inference on given '
                                    'image(s)',
                        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('input_path', help='Path to image or folder')
+    parser.add_argument('-I', '--img_path', action='append', help='Add path '
+                        'to input images (either path to single image or to '
+                        'folder containing images)')
     parser.add_argument('model_path')
-    parser.add_argument('out_path_binary', help='Path to output binary folder')
+    parser.add_argument('out_path', help='Path to output folder')
+    parser.add_argument('--img_type', help='Output image file ending',
+                        default='tif')
     # parser.add_argument('--tile_size', help='Tile size', type=int,
     #                     default=512)
     parser.add_argument('--tile_size', help='Tile size', type=int,
                         default=512)
     parser.add_argument('--margin', help='Margin', type=int, default=100)
-    parser.add_argument('--threshold', help='Decision threshold', type=float,
-                        default=0.5)
-    parser.add_argument('--wo_crf', action='store_true')
+    parser.add_argument('--depth', help='UNet depth', type=int, default=2)
+    parser.add_argument('--class_num', help='Number of classes', type=int, default=3)
+    parser.add_argument('--unet_mode', choices=utils.unet.XceptionUNet.UNET_MODES,
+                        default=utils.unet.XceptionUNet.UNET_MODES[0], 
+                        help='Choose UNet architecture configuration')
 
     args = vars(parser.parse_args())
     main(**args)

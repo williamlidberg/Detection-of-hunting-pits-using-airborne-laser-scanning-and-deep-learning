@@ -4,88 +4,70 @@ import numpy as np
 import pandas as pd
 import sklearn.metrics
 
+
 def perf_measure(gt, pred):
-    pred = np.round(pred).astype(int).flatten()
-    gt = gt.flatten()
-    TP = 0
-    FP = 0
-    TN = 0
-    FN = 0
+    TP = np.sum(gt & pred)
+    FP = np.sum((1 - gt) & pred)
+    TN = np.sum((1 - gt) & (1 - pred))
+    FN = np.sum(gt & (1 - pred))
+    scores = [('{}_tp', TP), ('{}_fp', FP),
+              ('{}_tn', TN), ('{}_fn', FN)]
 
-    for i in range(len(pred)): 
-        if gt[i]==pred[i]==1:
-           TP += 1
-        if pred[i]==1 and gt[i]!=pred[i]:
-           FP += 1
-        if gt[i]==pred[i]==0:
-           TN += 1
-        if pred[i]==0 and gt[i]!=pred[i]:
-           FN += 1
-    return(TP, FP, TN, FN)
+    return scores
 
 
-def evaluate(pred, gt):
-    pred = np.round(pred).astype(int).flatten()
-    gt = gt.flatten()
+def calculate_metrics(results, pred, gt, i):
+    pred = pred.flatten().astype(np.int64)
+    gt = gt.flatten().astype(np.int64)
 
-    fmes = sklearn.metrics.f1_score(gt, pred)
-    acc = sklearn.metrics.accuracy_score(gt, pred)
-    rec = sklearn.metrics.recall_score(gt, pred)
-    jacc = sklearn.metrics.jaccard_score(gt, pred)
-    TP, FP, TN, FN = perf_measure(gt, pred)
-    kappa = sklearn.metrics.cohen_kappa_score(gt, pred)#, *, labels=None, weights=None, sample_weight=None)
-    mcc = sklearn.metrics.matthews_corrcoef(gt, pred)
-    return fmes, acc, rec, jacc, TP, FP, TN, FN, kappa, mcc 
+    metrics = [('{}_fmes', sklearn.metrics.f1_score),
+               ('{}_acc', sklearn.metrics.accuracy_score),
+               ('{}_rec', sklearn.metrics.recall_score),
+               ('{}_jacc', sklearn.metrics.jaccard_score)]
+
+    for name, func in metrics:
+        results.setdefault(name.format(i), []).append(func(gt, pred))
+
+    scores = perf_measure(gt, pred)
+    for name, val in scores:
+        results.setdefault(name.format(i), []).append(val)
 
 
-def main(img_path, gt_path, selected_imgs, model_path, out_path, wo_crf, depth):
+def main(img_path, gt_path, selected_imgs, model_path, out_path, depth, classes, unet_mode):
+    size = 1 if selected_imgs is None else None
+    # convert string representations of class labels into lists
+    classes = [int(f) for f in classes.split(',')]
     valid_gen = utils.generator.DataGenerator(img_path, gt_path,
                                               include=selected_imgs,
-                                              augment=False)
-    if wo_crf:
-        unet = utils.unet.XceptionUNet(valid_gen.input_shape, depth=depth)
-        unet.model.load_weights(model_path)
-        model = unet.model
-    else:
-        unet = utils.unet.XceptionUNetCRF(valid_gen.input_shape, iterations=20)
-        unet.crf_model.load_weights(model_path)
-        model = unet.crf_model
-    results = {'fmes': [], 'acc': [], 'rec': [], 'jacc': [], 'TP': [], 'FP': [], 'TN': [], 'FN': [], 'kappa': [], 'mcc': []}
+                                              classes=classes,
+                                              size=size, augment=False)
+    # load unet weights
+    unet = utils.unet.XceptionUNet(valid_gen.input_shape, depth=depth,
+                                   classes=valid_gen.class_num,
+                                   mode=unet_mode)
+    unet.model.load_weights(model_path)
+    model = unet.model
+
+    results = {}
     valid_it = iter(valid_gen)
 
     for img, gt in valid_it:
         out = model.predict(img)
-        out = out[0, :, 1]  # .reshape(shape)
-        gt = gt[0, :, 1]
-        fmes, acc, rec, jacc, TP, FP, TN, FN, kappa, mcc = evaluate(out, gt)
-        results['fmes'].append(fmes)
-        results['acc'].append(acc)
-        results['rec'].append(rec)
-        results['jacc'].append(jacc)
-        results['TP'].append(TP)
-        results['FP'].append(FP)
-        results['TN'].append(TN)
-        results['FN'].append(FN)
-        results['kappa'].append(kappa)
-        results['mcc'].append(mcc)
+        classes = out.shape[-1]
+
+        # convert probabilities to labels
+        class_pred = np.argmax(out, axis=-1)
+        predicted = np.zeros(out.shape[1:])
+        # set the entry corresponding to the class with the highest probability
+        # to 1 - the rest is 0
+        predicted[list(range(len(predicted))), class_pred] = 1.0
+
+        for i in range(classes):
+            calculate_metrics(results, predicted[:, i], gt[0, :, i], i)
 
     df = pd.DataFrame(results)
-    total_TP = df['TP'].sum()
-    print('total_TP:', total_TP)
-    total_FP = df['FP'].sum()
-    print('total_FP: ', total_FP)
-    total_TN = df['TN'].sum()
-    print('total_TN: ', total_TN)
-    total_FN = df['FN'].sum()
-    print('total_FN: ',  total_FN)
-    mean_fmes = df['fmes'].mean()
-    print('mean f1 score: ', mean_fmes)
-    mean_kappa = df['kappa'].mean()
-    print('kappa score: ', mean_kappa)
-    mean_mcc = df['mcc'].mean()
-    print('mcc: ', mean_mcc)
     df.to_csv(out_path, index=False)
-   
+
 
 if __name__ == '__main__':
     import argparse
@@ -93,14 +75,20 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
                        description='Evaluate model on given images',
                        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('img_path', help='Path to image folder')
+    parser.add_argument('-I', '--img_path', action='append', help='Add path '
+                        'to input images')
     parser.add_argument('gt_path')
-    parser.add_argument('selected_imgs', help='Path to CSV file with '
-                        'selected image indices')
     parser.add_argument('model_path')
     parser.add_argument('out_path', help='Path to output CSV file')
-    parser.add_argument('--wo_crf', action='store_true')
+    parser.add_argument('--selected_imgs', help='Path to CSV file with '
+                        'selected image indices', default=None)
     parser.add_argument('--depth', type=int, default=2)
+    parser.add_argument('--classes', help='List of class labels in ground '
+                        'truth - order needs to correspond to weighting order',
+                        default='0,1,2')
+    parser.add_argument('--unet_mode', choices=utils.unet.XceptionUNet.UNET_MODES,
+                        default=utils.unet.XceptionUNet.UNET_MODES[0], 
+                        help='Choose UNet architecture configuration')
 
     args = vars(parser.parse_args())
     main(**args)
