@@ -129,11 +129,11 @@ if __name__ == '__main__':
                         type=int, default=4)
     parser.add_argument('--classes', help='List of class labels in ground '
                         'truth - order needs to correspond to weighting order',
-                        default='0,1,2')
+                        default='0,1')
     parser.add_argument('--weighting', help='Configure class weights - can be '
                         '"auto", "none" or defined weight string, e.g., '
-                        '"0.1,1,1"',
-                        default='0.1,1,1')
+                        '"0.1,1"',
+                        default='0.1,1')
 
     args = vars(parser.parse_args())
     main(**args)

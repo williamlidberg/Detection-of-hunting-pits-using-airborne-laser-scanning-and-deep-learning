@@ -10,8 +10,10 @@ from tensorflow.keras import layers
 
 class XceptionUNet(object):
 
+    UNET_MODES = ['default', 'wo_entry']
+
     def __init__(self, input_shape, depth=None, activation='softmax',
-                 classes=2, entry_block=True, first_core_filters=128):
+                 classes=2, mode=UNET_MODES[0], first_core_filters=128):
         '''Initialize Xception Unet
         Parameters
         ----------
@@ -20,8 +22,7 @@ class XceptionUNet(object):
                 optional
         activation : Activation function to use in the hidden layers, optional
         classes : Number of target classes, optional
-        entry_block : Process input image by a CNN before starting the
-                      downsampling with its separated convolutions, optional
+        mode : UNet mode - currently supported 'default', 'wo_entry'
         first_core_filters : Number of filters to use in first downsampling
                              block - determines the filter sizes in all
                              subsequent layers, optional
@@ -34,7 +35,14 @@ class XceptionUNet(object):
         depth = 2 if depth is None else depth
         self.activation = activation
         self.classes = classes
-        self.entry_block = entry_block
+        if mode == self.UNET_MODES[0]:
+            # Process input image by a CNN before starting the
+            # downsampling with its separated convolutions
+            self.entry_block = True
+        elif mode == self.UNET_MODES[1]:
+            self.entry_block = False
+        else:
+            raise ValueError('Unsupported mode: {}'.format(mode))
         self.__set_depth(depth, first_core_filters)
         self.padding = self.__compute_padding(self.input_shape, depth, self.entry_block)
         self.model = self.__setup_model()
