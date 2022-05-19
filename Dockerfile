@@ -17,6 +17,7 @@ RUN pip install splitraster==0.3.2
 #RUN pip install imageio==2.15.0
 RUN pip install rasterio==1.2.10 
 RUN pip install leafmap==0.9.1
+RUn pip install rtree==1.0.0
 RUN echo "Installed python packages!"
 
 RUN add-apt-repository ppa:ubuntugis/ppa && apt-get update

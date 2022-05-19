@@ -4,17 +4,18 @@ import whitebox
 wbt = whitebox.WhiteboxTools()
 
 def convert_polygon(base_file_path, input_observations, output_label_path):
-        for f in os.listdir(base_file_path):
-        base = base_file_path + f
-        label_tiles = output_label_path + f
-        wbt.vector_polygons_to_raster(
-            i = input_observations, 
-            output = label_tiles, 
-            field="class", 
-            nodata=False, 
-            cell_size=None, 
-            base=base
-        )
+    for f in os.listdir(base_file_path):
+        if f.endswith('.tif'):
+            base = base_file_path + f
+            label_tiles = output_label_path + f
+            wbt.vector_polygons_to_raster(
+                i = input_observations, 
+                output = label_tiles, 
+                field="class", 
+                nodata=False, 
+                cell_size=None, 
+                base=base
+            )
 
 def main(base_file_path, input_observations, output_label_path):
     convert_polygon(base_file_path, input_observations, output_label_path)
