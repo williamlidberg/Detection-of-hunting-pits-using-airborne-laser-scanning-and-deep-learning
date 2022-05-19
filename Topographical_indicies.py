@@ -7,27 +7,7 @@ wbt = whitebox.WhiteboxTools()
 parser = argparse.ArgumentParser(description='Extract topogrpahical incides from DEMs. ')
 
 
-def normalize_hillshade(hillshade, norm_img):
-        img = tifffile.imread(hillshade)
-        normed_shade = img/32767 # hillshade is a 16 bit signed integer file but only values between 0 and 32767 are used for hillshades
-        tifffile.imwrite(norm_img, normed_shade.astype('float32'))
-        print('normalized hillshade', hillshade)
-
-def normalize_slope(slope, norm_img):
-        img = tifffile.imread(slope)
-        normed_slope = img/90 # no slope can be flatter than 0 degrees or steeper than 90 degrees
-        tifffile.imwrite(norm_img, normed_slope.astype('float32'))
-        print('normalized slope', slope)
-
-def normalize_hpmf(hpmf, norm_img):
-        img = tifffile.imread(hpmf)
-        normed_hpmf = (img--1)/(2--1) 
-        tifffile.imwrite(norm_img, normed_hpmf.astype('float32'))
-        print('normalized hpmf', hpmf)
-
-
-
-def main(input_path, output_path_hillshade, output_path_slope, output_path_hpmf):
+def main(input_path, output_path_hillshade, output_path_slope, output_path_hpmf, output_path_stdon):
 
     # setup paths
     if not os.path.exists(input_path):
@@ -48,6 +28,7 @@ def main(input_path, output_path_hillshade, output_path_slope, output_path_hpmf)
         hillshade = os.path.join(output_path_hillshade,'{}.{}'.format(img_name, 'tif'))
         slope = os.path.join(output_path_slope,'{}.{}'.format(img_name, 'tif'))
         high_pass_median_filter = os.path.join(output_path_hpmf,'{}.{}'.format(img_name, 'tif'))
+        spherical_std_dev_of_normals = os.path.join(output_path_stdon,'{}.{}'.format(img_name, 'tif'))
 
         wbt.multidirectional_hillshade(
             dem = img_path, 
@@ -72,6 +53,11 @@ def main(input_path, output_path_hillshade, output_path_slope, output_path_hpmf)
             sig_digits=2
         )
 
+        wbt.spherical_std_dev_of_normals(
+            dem = img_path, 
+            output = spherical_std_dev_of_normals, 
+            filter=5
+        )
 
 if __name__ == '__main__':
     import argparse
@@ -84,6 +70,6 @@ if __name__ == '__main__':
     parser.add_argument('output_path_hillshade', help = 'directory to store hillshade images')
     parser.add_argument('output_path_slope', help = 'directory to store slope images')
     parser.add_argument('output_path_hpmf', help = 'directory to store hpmf images')
-    
+    parser.add_argument('output_path_stdon', help='directory to store stdon images')
     args = vars(parser.parse_args())
     main(**args)

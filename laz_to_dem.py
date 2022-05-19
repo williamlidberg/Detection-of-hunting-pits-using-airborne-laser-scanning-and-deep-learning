@@ -1,3 +1,4 @@
+import os
 import argparse
 import whitebox
 wbt = whitebox.WhiteboxTools()
@@ -18,14 +19,29 @@ def laz_to_dem(laz_dir):
     )
     print("Completed TIN interpolation \n")
 
+def fill_holes(dem_img, dem_fill):
+    wbt.fill_missing_data(
+        i= dem_img, 
+        output = dem_fill, 
+        filter=5000, 
+        weight=2.0, 
+        no_edges=True
+    )
 
-def main(laz_dir):
+def main(laz_dir, dem_dir):
     laz_to_dem(laz_dir)
+
+    for f in os.listdir(laz_dir):
+        if f.endswith('.tif'):
+                dem_img = laz_dir + f
+                dem_fill = dem_dir + f
+                fill_holes(dem_img, dem_fill)
 
 if __name__== '__main__':
     parser = argparse.ArgumentParser(
         description='Select the lidar tiles which contains training data',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('laz_dir', help='Path to directory where laz files are stored')    
+    parser.add_argument('laz_dir', help='Path to directory where laz files are stored')   
+    parser.add_argument('dem_dir', help='Path to directory where dem files are stored')  
     args = vars(parser.parse_args())
     main(**args)
