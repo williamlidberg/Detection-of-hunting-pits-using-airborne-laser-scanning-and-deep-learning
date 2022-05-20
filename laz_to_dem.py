@@ -25,7 +25,7 @@ def fill_holes(dem_img, dem_fill):
         output = dem_fill, 
         filter=5000, 
         weight=2.0, 
-        no_edges=True
+        no_edges=False
     )
 
 def main(laz_dir, dem_dir):
