@@ -18,15 +18,17 @@ docker run -it -p 8888:8888 -p 16006:16006 --gpus all --mount type=bind,source=/
 jupyter notebook --ip=0.0.0.0 --no-browser --allow-root
 
 ## Select lidar tiles based on locatiaon of training data
-python /workspace/code/select_lidar_tiles.py /workspace/lidar/pooled_laz_files/ /workspace/data/selected_lidar_tiles/ /workspace/data/charcoal_kilns/Merged_charcoal_kilns_william.shp
+First create a polygon that can be used to select relevant laz tiles:\
+python /workspace/code/create_aoi_poolygon.py /workspace/lidar/none.shp /workspace/data/hunting_pits/Fangstgrop_training_Holmen_Cissi_695st_220214.shp /workspace/lidar/pooled_laz_files/ /workspace/data/hunting_pits/laz/
+
+## Convert laz to dem
+python /workspace/code/laz_to_dem.py /workspace/data/hunting_pits/laz/ /workspace/data/hunting_pits/dem_tiles/
 
 ## Convert field observations to labeled tiles  
 python /code//utils/create_labels.py /data/selected_dems/ /data/charcoal_kilns/charcoal_kilns_buffer.shp /data/label_tiles/
 
-python /code/Topographical_indicies.py //data/selected_dems/ /data/topographical_indices/hillshade/ /data/topographical_indices/slope/ /data/topographical_indices/hpmf/
-
-**normalize topographical indices**  
-python /code/normalize_indices.py /data/topographical_indices/hillshade/ /data/topographical_indices_normalized/hillshade/ /data/topographical_indices/slope/ /data/topographical_indices_normalized/slope/ /data/topographical_indices/hpmf/ /data/topographical_indices_normalized/hpmf/
+## Extract and normalize topographical indices
+python /workspace/code/Extract_topographcical_indices.py /workspace/temp_dir/ /workspace/data/hunting_pits/laz/ /workspace/data/hunting_pits/topographical_indices_normalized/hillshade/ /workspace/data/hunting_pits/topographical_indices_normalized/slope/ /workspace/data/hunting_pits/topographical_indices_normalized/hpmf/ /workspace/data/hunting_pits/topographical_indices_normalized/stdon/
 
 ## Split tiles into smaller image chips make sure the directory is empty/new so the split starts at 1 each time. 
 Use this to empty the split directories before running the split scripts: rm -f /workspace/data/split_data/{*,.*}
