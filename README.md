@@ -1,7 +1,24 @@
+[![docs](https://img.shields.io/badge/whitebox-docs-brightgreen.svg)](https://www.whiteboxgeo.com/manual/wbt_book/preface.html)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Twitter Follow](https://img.shields.io/twitter/follow/William_Lidberg?style=social)](https://twitter.com/giswqs)
+
+
+
 # Remnants-of-charcoal-kilns
 Detect remnants of charcoal kilns from LiDAR data
 
 ![alt text](BlackWhite_large_zoom_wide2.png)
+
+
+
+**Contents**
+
+1. [Set up docker](#Docker)
+2. [Create digital elevation model](#Create digital elevation model)
+3. [Create training data](#Create training data)
+4. [Train the model](#Train the model)
+5. [The Moon](#The Moon)
+
 
 # Docker
 **Set up a docker container with a ramdisk**
@@ -17,6 +34,8 @@ docker run -it -p 8888:8888 -p 16006:16006 --gpus all --mount type=bind,source=/
 
 jupyter notebook --ip=0.0.0.0 --no-browser --allow-root
 
+# Create digital elevation model
+
 ## Select lidar tiles based on locatiaon of training data
 First create a polygon that can be used to select relevant laz tiles:\
 python /workspace/code/create_aoi_poolygon.py /workspace/lidar/none.shp /workspace/data/hunting_pits/Fangstgrop_training_Holmen_Cissi_695st_220214.shp /workspace/lidar/pooled_laz_files/ /workspace/data/hunting_pits/laz/
@@ -24,6 +43,7 @@ python /workspace/code/create_aoi_poolygon.py /workspace/lidar/none.shp /workspa
 ## Convert laz to dem
 python /workspace/code/laz_to_dem.py /workspace/data/hunting_pits/laz/ /workspace/data/hunting_pits/dem_tiles/
 
+# Create training data
 ## Convert field observations to labeled tiles  
 python /code//utils/create_labels.py /data/selected_dems/ /data/charcoal_kilns/charcoal_kilns_buffer.shp /data/label_tiles/
 
@@ -49,7 +69,7 @@ python /code/split_training_data.py /data/label_tiles/ /data/split_data/labels/ 
 **Remove chips without labels**
 python /workspace/code/remove_unlabled_chips.py 1 /workspace/data/split_data/labels/ /workspace/data/split_data/hillshade/ /workspace/data/split_data/slope/ /workspace/data/split_data/hpmf/
 
-## Train the model
+# Train the model
 This is an example on how to train the model in the docker cotnainer:
 
 python /workspace/code/train.py -I /workspace/data/split_data/hillshade/ -I /workspace/data/split_data/slope/ -I /workspace/data/split_data/hpmf/ /workspace/data/split_data/labels/ /workspace/data/logfiles/log1/ --seed=40 --epochs 10 
