@@ -14,10 +14,10 @@ Detect remnants of charcoal kilns from LiDAR data
 **Contents**
 
 1. [Set up docker](#Docker)
-2. [Create digital elevation model](# Create digital elevation model)
-3. [Create training data](# Create training data)
-4. [Train the model](# Train the model)
-5. [The Moon](# The Moon)
+2. [Create digital elevation model](#Create digital elevation model)
+3. [Create training data](#Create training data)
+4. [Train the model](#Train the model)
+5. [The Moon](#The Moon)
 
 
 # Docker
