@@ -17,7 +17,8 @@ Detect remnants of charcoal kilns from LiDAR data
 2. [Create digital elevation model](#Create-digital-elevation-model)
 3. [Create training data](#Create-training-data)
 4. [Train the model](#Train-the-model)
-5. [The Moon](#The-Moon)
+5. [Object detection](#Object-detection)
+6. [The Moon](#The-Moon)
 
 
 # Docker
@@ -74,6 +75,7 @@ This is an example on how to train the model in the docker cotnainer:
 
 python /workspace/code/train.py -I /workspace/data/split_data/hillshade/ -I /workspace/data/split_data/slope/ -I /workspace/data/split_data/hpmf/ /workspace/data/split_data/labels/ /workspace/data/logfiles/log1/ --seed=40 --epochs 10 
 
+# Object detection
 
 
 # The Moon
