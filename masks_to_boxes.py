@@ -8,31 +8,34 @@ import argparse
 from PIL import Image
 import numpy as np
 
-def boxes(temp_dir, labels_dir):
+def boxes(temp_dir, labels_dir, bounding_box_dir):
     for tile in os.listdir(labels_dir):
         if tile.endswith('.tif'):
             mask = tifffile.imread(labels_dir + tile)
             mask = mask.astype(np.uint8)
             mask_from_array = Image.fromarray(mask)
             
-            # save image as png so it can be read with read_img. send help...
-            temp_img = temp_dir + tile.replace('.tif', '.png')
-            mask_from_array.save(temp_img)
-
-            mask = read_image(temp_img)
-            obj_ids = torch.unique(mask)
-            # first id is the background, so remove it.
-            obj_ids = obj_ids[1:] 
-            masks = mask == obj_ids[:, None, None]
-            boxes = masks_to_boxes(masks)
-             # each box has a uniqe ID now but they should all be the same class
-            #labels = torch.ones((masks.shape[0],), dtype=torch.int64) 
-            labels = 1 # all bounding boxes are hunting pits.
-            target = {}
-            target["boxes"] = boxes
-            target["labels"] = labels
             
-            print(target) # How do we save the boundig boxes in a usefull format?
+            temp_img = temp_dir + tile.replace('.tif', '.png')
+            mask_from_array.save(temp_img) # save image as png so it can be read with read_img. There must be a better way to do this.
+            mask = read_image(temp_img) 
+            obj_ids = torch.unique(mask)
+            obj_ids = obj_ids[1:] # first id is the background, so remove it.
+            masks = mask == obj_ids[:, None, None]
+            
+            boxes = masks_to_boxes(masks)
+            print(boxes)
+            np.savetxt(os.path.join(bounding_box_dir, tile.replace('.tif', '.txt')), torch.Tensor(boxes).numpy())
+            #x_min = boxes[0]
+            #y_min = boxes[1]
+            #x_max = boxes[2]
+            #y_max = boxes[3] 
+            #print(x_min) 
+         #   with open(os.path.join(bounding_box_dir, tile.replace('.tif', '.txt')), 'w') as f:
+         #       for feature in boxes:
+         #           f.write(feature)
+         #           f.write('\n')
+
 
 def clean_temp(temp_dir):
     for root, dir, fs in os.walk(temp_dir):
@@ -40,9 +43,9 @@ def clean_temp(temp_dir):
             os.remove(os.path.join(root, f))
 
 
-def main(temp_dir, labels_dir):
-    boxes(temp_dir, labels_dir)
-    clean_temp(temp_dir)
+def main(temp_dir, labels_dir, bounding_box_dir):
+    boxes(temp_dir, labels_dir, bounding_box_dir)
+
 
 
 if __name__ == '__main__':
@@ -52,8 +55,10 @@ if __name__ == '__main__':
                        description='Extract topographical indicies '
                                    'image(s)',
                        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('temp_dir', help= 'path to a temperary directory')
-    parser.add_argument('labels_dir', help='Path to dem or folder of dems')
+    parser.add_argument('temp_dir', help= 'Path to temp dir')
+    parser.add_argument('labels_dir', help= 'Path to segmentation masks or folder of dems')
+    parser.add_argument('bounding_box_dir', help= 'Path to dem or folder of dems')
+    #parser.add_argument('--size',type=int, help= 'image size')
     #parser.add_argument('--boxes', help = 'bounding boxes') # can they be saved as COCO or PASCAL?
 
     args = vars(parser.parse_args())
