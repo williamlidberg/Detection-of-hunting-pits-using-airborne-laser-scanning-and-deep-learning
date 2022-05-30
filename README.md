@@ -25,7 +25,7 @@ Detect remnants of charcoal kilns from LiDAR data
 **Set up a docker container with a ramdisk**
 
 Navigate to /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns/ and run:
-docker build -t cultural .
+ docker build -t cultural .
 
 
 **Run notebook**
