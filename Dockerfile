@@ -20,6 +20,9 @@ RUN pip install leafmap==0.9.1
 RUn pip install rtree==1.0.0
 RUN pip install torch
 RUN pip install torchvision
+RUN pip install jupyter_contrib_nbextensions
+RUN pip install jupyter_nbextensions_configurator
+RUN jupyter nbextensions_configurator enable --user
 RUN echo "Installed python packages!"
 
 RUN add-apt-repository ppa:ubuntugis/ppa && apt-get update

@@ -26,7 +26,10 @@ def boxes(temp_dir, labels_dir, bounding_box_dir):
             boxes = masks_to_boxes(masks)
             print(boxes)
             np.savetxt(os.path.join(bounding_box_dir, tile.replace('.tif', '.txt')), torch.Tensor(boxes).numpy())
-            #x_min = boxes[0]
+            #boxers = torch.Tensor(boxes).numpy()
+            #x_min = boxers[0]
+            #print(type(x_min))
+            #print(x_min)
             #y_min = boxes[1]
             #x_max = boxes[2]
             #y_max = boxes[3] 

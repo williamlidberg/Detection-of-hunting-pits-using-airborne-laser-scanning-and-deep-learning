@@ -4,8 +4,8 @@
 
 
 
-# Remnants-of-charcoal-kilns
-## Detect remnants of charcoal kilns from LiDAR data
+# Cultural-remains
+## Detect cultural remains from LiDAR data
 
 ![alt text](images/BlackWhite_large_zoom_wide2.png)
 
