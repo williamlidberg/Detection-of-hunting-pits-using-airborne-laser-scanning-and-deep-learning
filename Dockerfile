@@ -30,4 +30,4 @@ RUN export C_INCLUDE_PATH=/usr/include/gdal
 RUN pip install GDAL
 RUN echo "Gdal installed!"
 
-RUN mkdir -p ~/workspace/temp_dir
+RUN mkdir -p ~/workspace/temp
