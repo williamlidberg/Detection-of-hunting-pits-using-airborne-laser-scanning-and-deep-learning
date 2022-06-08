@@ -7,15 +7,14 @@ import tifffile
 import argparse
 from PIL import Image
 import numpy as np
+import pybboxes as pbx
 
-def boxes(temp_dir, labels_dir, bounding_box_dir):
+def boxes(temp_dir, labels_dir, size, label_class, bounding_box_dir):
     for tile in os.listdir(labels_dir):
         if tile.endswith('.tif'):
             mask = tifffile.imread(labels_dir + tile)
             mask = mask.astype(np.uint8)
             mask_from_array = Image.fromarray(mask)
-            
-            
             temp_img = temp_dir + tile.replace('.tif', '.png')
             mask_from_array.save(temp_img) # save image as png so it can be read with read_img. There must be a better way to do this.
             mask = read_image(temp_img) 
@@ -24,21 +23,23 @@ def boxes(temp_dir, labels_dir, bounding_box_dir):
             masks = mask == obj_ids[:, None, None]
             
             boxes = masks_to_boxes(masks)
-            print(boxes)
-            np.savetxt(os.path.join(bounding_box_dir, tile.replace('.tif', '.txt')), torch.Tensor(boxes).numpy())
-            #boxers = torch.Tensor(boxes).numpy()
-            #x_min = boxers[0]
-            #print(type(x_min))
-            #print(x_min)
-            #y_min = boxes[1]
-            #x_max = boxes[2]
-            #y_max = boxes[3] 
-            #print(x_min) 
-         #   with open(os.path.join(bounding_box_dir, tile.replace('.tif', '.txt')), 'w') as f:
-         #       for feature in boxes:
-         #           f.write(feature)
-         #           f.write('\n')
-
+            #print(masks)
+            
+            boxers = torch.Tensor(boxes).numpy()
+            W = size
+            H = size
+            for box in boxers: 
+                x_min = box.item(0)
+                y_min = box.item(1)
+                x_max = box.item(2)
+                y_max = box.item(3)
+                voc = x_min, y_min, x_max, y_max
+                yolo = pbx.convert_bbox(voc, from_type="voc", to_type="yolo", image_width=W, image_height=H)
+                yolo_list = [str(i) for i in list(yolo)]
+                yolo_list.insert(0,str(label_class))
+                with open(os.path.join(bounding_box_dir, tile.replace('.tif', '.txt')), 'a') as f:
+                    f.write(" ".join(yolo_list))
+                    f.write('\n')
 
 def clean_temp(temp_dir):
     for root, dir, fs in os.walk(temp_dir):
@@ -46,10 +47,8 @@ def clean_temp(temp_dir):
             os.remove(os.path.join(root, f))
 
 
-def main(temp_dir, labels_dir, bounding_box_dir):
-    boxes(temp_dir, labels_dir, bounding_box_dir)
-
-
+def main(temp_dir, labels_dir,image_size, label_class, bounding_box_dir):
+    boxes(temp_dir, labels_dir,image_size, label_class, bounding_box_dir)
 
 if __name__ == '__main__':
     import argparse
@@ -60,9 +59,8 @@ if __name__ == '__main__':
                        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('temp_dir', help= 'Path to temp dir')
     parser.add_argument('labels_dir', help= 'Path to segmentation masks or folder of dems')
+    parser.add_argument('image_size', type=int, help= 'size of image in number of pixels')
+    parser.add_argument('label_class', type=int, help= 'class to give the labels')
     parser.add_argument('bounding_box_dir', help= 'Path to dem or folder of dems')
-    #parser.add_argument('--size',type=int, help= 'image size')
-    #parser.add_argument('--boxes', help = 'bounding boxes') # can they be saved as COCO or PASCAL?
-
     args = vars(parser.parse_args())
     main(**args)
