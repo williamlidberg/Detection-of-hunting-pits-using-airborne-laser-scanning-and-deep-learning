@@ -7,20 +7,36 @@
 # Cultural-remains
 ## Detect cultural remains from LiDAR data
 
-![alt text](images/BlackWhite_large_zoom_wide2.png)
 
+<img src="images/BlackWhite_large_zoom_wide2.png" alt="Charcoal kiln" width="75%"/>
 
 
 # Table of  Contents
 
 1. [Set up docker](#Docker)
 2. [Create digital elevation model](#Create-digital-elevation-model)
-3. [Create training data](#Create-training-data)
+3. [Extract topographical features](#Extract-topographical-features)
+4. [Semantic segmentation](#Semantic-segmentation)
+    1. [Create segmentation masks](##Create-segmentation-mask)
+    2. [Create image chips](##Create-image-chips)
+    3. [Train U-net](##Train-U-net)
+    4. [Evaluate U-net](##Evaluate-U-net)
+    5. [Inference U-net](##Inference-U-net)
+5. [Object detection](#Object-detection)
+    1. [Create bounding boxes](##Create-bounding-boxes)
+    2. [Train YOLO](##Train-YOLO)
+    3. [Evaluate YOLO](##Evaluate-YOLO)
+    4. [Inference YOLO](##Inference-YOLO)
 4. [Train the model](#Train-the-model)
 5. [Object detection](#Object-detection)
-6. [The Moon](#The-Moon)
-
+6. [Transfer learning](#Transfer-learning)
+    1. [Data description](##Data-description)
+    2. [Select craters](##Select-craters)
+    3. [Craters to segmentation masks](##Craters-to-segmentation-masks)
+    4. [Craters to bounding boxes](##Craters-to-bounding-boxes)
+7. [References](#References)
 ***
+
 
 # Docker
 
@@ -53,17 +69,19 @@ First create a polygon that can be used to select relevant laz tiles:
 ## Convert laz to dem
 
     python /workspace/code/laz_to_dem.py /workspace/data/hunting_pits/laz/ /workspace/data/hunting_pits/dem_tiles/
+# Extract topographical features
 
-# Create training data
-## Convert field observations to labeled tiles
-
-    python /code/utils/create_labels.py /data/selected_dems/ /data/charcoal_kilns/charcoal_kilns_buffer.shp /data/label_tiles/
 
 ## Extract and normalize topographical indices
-python /workspace/code/Extract_topographcical_indices.py /workspace/temp_dir/ /workspace/data/hunting_pits/laz/ /workspace/data/hunting_pits/topographical_indices_normalized/hillshade/ /workspace/data/hunting_pits/topographical_indices_normalized/slope/ /workspace/data/hunting_pits/topographical_indices_normalized/hpmf/ /workspace/data/hunting_pits/topographical_indices_normalized/stdon/
+    python /workspace/code/Extract_topographcical_indices.py /workspace/temp_dir/ /workspace/data/hunting_pits/laz/ /workspace/data/hunting_pits/topographical_indices_normalized/hillshade/ /workspace/data/hunting_pits/topographical_indices_normalized/slope/ /workspace/data/hunting_pits/topographical_indices_normalized/hpmf/ /workspace/data/hunting_pits/topographical_indices_normalized/stdon/
 
-## Split tiles into smaller image chips make sure the directory is empty/new so the split starts at 1 each time. 
-Use this to empty the split directories before running the split scripts: rm -f /workspace/data/split_data/{*,.*}
+# Semantic segmentation
+
+## Create segmentation masks
+    python /code/utils/create_labels.py /data/selected_dems/ /data/charcoal_kilns/charcoal_kilns_buffer.shp /data/label_tiles/
+## Create image chips
+
+Split tiles into smaller image chips make sure the directory is empty/new so the split starts at 1 each time
  
 **Split hillshade**
 
@@ -81,20 +99,29 @@ Use this to empty the split directories before running the split scripts: rm -f 
 
     python /code/split_training_data.py /data/label_tiles/ /data/split_data/labels/ --tile_size 256
 
-
 **Remove chips without labels**
 
     python /workspace/code/remove_unlabled_chips.py 1 /workspace/data/split_data/labels/ /workspace/data/split_data/hillshade/ /workspace/data/split_data/slope/ /workspace/data/split_data/hpmf/
 
-# Train the model
+## Train U-net
 This is an example on how to train the model in the docker cotnainer:
 
     python /workspace/code/train.py -I /workspace/data/split_data/hillshade/ -I /workspace/data/split_data/slope/ -I /workspace/data/split_data/hpmf/ /workspace/data/split_data/labels/ /workspace/data/logfiles/log1/ --seed=40 --epochs 10 
+## Evaluate U-net
+
+## Inference U-net
 
 # Object detection
 
+## Create bounding boxes
 
-# The Moon
+## Train YOLO
+
+## Evaluate YOLO
+
+## Inference YOLO
+
+# Transfer learning
 
 ![alt text](images/Crater.png)
 
@@ -105,14 +132,16 @@ Impact creaters from the moon were used to pre-train the model. These creaters w
 The Moon LRO LOLA DEM 118m v1 was used as digital elevation model. This digital elevation model  is based on data from the Lunar Orbiter Laser Altimeter, an instrument on the National Aeronautics and Space Agency (NASA) Lunar Reconnaissance Orbiter (LRO) spacecraft. The created DEM represents more than 6.5 billion measurements gathered between July 2009 and July 2013, adjusted for consistency in the coordinate system described below, and then converted to lunar radii.
 Source: https://astrogeology.usgs.gov/search/details/Moon/LRO/LOLA/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014/cub
 
-## Crater selection
+## Select craters
 The charcoal kilns in the trainig data were between x and y pixels with an average of z in diameter. Therefore creaters that were less than x pixels (of the lundar dem) were excluded. creaters larger than y pixels were resampled down to z pixels. The following criterias:
 
     1. They can not overlap any nearby creaters.
     2. They have to be about the same size range as charcoal kilns in number of pixels.
     3. min and max lat and log values to avoid deformed craters?
 
-    
+## Craters to segmentation masks    
+
+## Craters to bounding boxes
 
 # Old notes
 ## Train model - test with hillshade only  
@@ -150,3 +179,5 @@ Phone:
 [Twitter](https://twitter.com/william_lidberg)
 ## License
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+# References
