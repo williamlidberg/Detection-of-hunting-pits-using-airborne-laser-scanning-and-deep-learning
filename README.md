@@ -13,7 +13,7 @@
 
 # Table of  Contents
 
-1. [Set up docker](#Docker)
+1. [Docker containers](#Docker-containers)
 2. [Create digital elevation model](#Create-digital-elevation-model)
 3. [Extract topographical features](#Extract-topographical-features)
 4. [Semantic segmentation](#Semantic-segmentation)
@@ -27,8 +27,6 @@
     2. [Train YOLO](##Train-YOLO)
     3. [Evaluate YOLO](##Evaluate-YOLO)
     4. [Inference YOLO](##Inference-YOLO)
-4. [Train the model](#Train-the-model)
-5. [Object detection](#Object-detection)
 6. [Transfer learning](#Transfer-learning)
     1. [Data description](##Data-description)
     2. [Select craters](##Select-craters)
@@ -38,29 +36,18 @@
 ***
 
 
-# Docker
+# Docker containers
 
-**Navigate to the dockerfile and build the container:**
+Navigate to respective dockerfile and build the containers
 
-    docker build -t cultural .
+    docker build -t segmentation .
+    docker build -t detection .
 
-
-**Run container in the background with screen:**
-
-    screen -S notebook
-
-    docker run -it -p 8888:8888 -p 16006:16006 --gpus all --mount type=bind,source=/mnt/Extension_100TB/William/GitHub/ Remnants-of-charcoal-kilns/,target=/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar cultural:latest
-
-**Start the notebook:**
-
-    jupyter notebook --ip=0.0.0.0 --no-browser --allow-root
-
-detach the screen environment:
-
-    ctlr + a + d
 
 # Create digital elevation model
+The laser data contained 1-2 points / m2 and can be downloaded from Lantmäteriet: https://www.lantmateriet.se/en/geodata/geodata-products/product-list/laser-data-download-forest/
 
+The Laser data is stored as .laz tiles where each tile is 2 500 m x 2 500 m
 **Select lidar tiles based on locatiaon of training data**\
 First create a polygon that can be used to select relevant laz tiles:
 
@@ -144,6 +131,20 @@ The charcoal kilns in the trainig data were between x and y pixels with an avera
 ## Craters to bounding boxes
 
 # Old notes
+**Run container in the background with screen:**
+
+    screen -S notebook
+
+    docker run -it -p 8888:8888 -p 16006:16006 --gpus all --mount type=bind,source=/mnt/Extension_100TB/William/GitHub/ Remnants-of-charcoal-kilns/,target=/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar cultural:latest
+
+**Start the notebook:**
+
+    jupyter notebook --ip=0.0.0.0 --no-browser --allow-root
+
+detach the screen environment:
+
+    ctlr + a + d
+
 ## Train model - test with hillshade only  
 log 34 was trained on only hillshades and got mcc 0.85  
 log 35 was trained on only hpmf and got mcc 0  
