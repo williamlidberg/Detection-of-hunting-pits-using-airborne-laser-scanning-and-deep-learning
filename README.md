@@ -22,6 +22,7 @@
     3. [Train U-net](##Train-U-net)
     4. [Evaluate U-net](##Evaluate-U-net)
     5. [Inference U-net](##Inference-U-net)
+    6. [Post-processing U-net](##Post-processing-U-net)
 5. [Object detection](#Object-detection)
     1. [Create bounding boxes](##Create-bounding-boxes)
     2. [Train YOLO](##Train-YOLO)
@@ -33,6 +34,7 @@
     3. [Craters to segmentation masks](##Craters-to-segmentation-masks)
     4. [Craters to bounding boxes](##Craters-to-bounding-boxes)
 7. [References](#References)
+
 ***
 
 
@@ -90,14 +92,24 @@ Split tiles into smaller image chips make sure the directory is empty/new so the
 
     python /workspace/code/remove_unlabled_chips.py 1 /workspace/data/split_data/labels/ /workspace/data/split_data/hillshade/ /workspace/data/split_data/slope/ /workspace/data/split_data/hpmf/
 
+Segmentation masks of charcoal kilns, hillshade, local slope, high pass median filter and standard deviation of normals
+
+<img src="images/charcoal kilns.PNG" alt="Charcoal kilns" width="80%"/>
+
+Segmentation masks of hunting pits, hillshade, local slope, high pass median filter and standard deviation of normals
+
+<img src="images/Hunting_pits.PNG" alt="Hunting pits" width="80%"/>
+
 ## Train U-net
 This is an example on how to train the model in the docker cotnainer:
 
     python /workspace/code/train.py -I /workspace/data/split_data/hillshade/ -I /workspace/data/split_data/slope/ -I /workspace/data/split_data/hpmf/ /workspace/data/split_data/labels/ /workspace/data/logfiles/log1/ --seed=40 --epochs 10 
 ## Evaluate U-net
-
+    python Y:/William/GitHub/Remnants-of-charcoal-kilns/inference.py Y:/William/Kolbottnar/data/topographical_indices/hillshade/ Y:/William/Kolbottnar/logs/log34/test.h5 D:/kolbottnar/inference/34_inference/ --tile_size=256 --wo_crf
 ## Inference U-net
-
+    python Y:/William/GitHub/Remnants-of-charcoal-kilns/inference.py Y:/William/Kolbottnar/data/topographical_indices/hillshade/ Y:/William/Kolbottnar/logs/log34/test.h5 D:/kolbottnar/inference/34_inference/ --tile_size=256 --wo_crf
+## Post-processing U-net
+    python Y:/William/GitHub/Remnants-of-charcoal-kilns/post_processing.py D:/kolbottnar/inference/34_inference/ D:/kolbottnar/inference/34_post_processing/raw_polygons/ D:/kolbottnar/inference/34_post_processing/filtered_polygons/ --min_area=400 --min_ratio=-0.3
 # Object detection
 
 ## Create bounding boxes
