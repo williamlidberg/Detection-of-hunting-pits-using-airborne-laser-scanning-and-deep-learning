@@ -14,52 +14,80 @@
 # Table of  Contents
 
 1. [Docker containers](#Docker-containers)
-2. [Create digital elevation model](#Create-digital-elevation-model)
-3. [Extract topographical features](#Extract-topographical-features)
-4. [Semantic segmentation](#Semantic-segmentation)
+3. [Training data](#Training-data)
+4. [Create digital elevation model](#Create-digital-elevation-model)
+5. [Extract topographical features](#Extract-topographical-features)
+6. [Semantic segmentation](#Semantic-segmentation)
     1. [Create segmentation masks](##Create-segmentation-mask)
     2. [Create image chips](##Create-image-chips)
     3. [Train U-net](##Train-U-net)
     4. [Evaluate U-net](##Evaluate-U-net)
     5. [Inference U-net](##Inference-U-net)
     6. [Post-processing U-net](##Post-processing-U-net)
-5. [Object detection](#Object-detection)
+7. [Object detection](#Object-detection)
     1. [Create bounding boxes](##Create-bounding-boxes)
     2. [Train YOLO](##Train-YOLO)
     3. [Evaluate YOLO](##Evaluate-YOLO)
     4. [Inference YOLO](##Inference-YOLO)
-6. [Transfer learning](#Transfer-learning)
+8. [Transfer learning](#Transfer-learning)
     1. [Data description](##Data-description)
     2. [Select craters](##Select-craters)
     3. [Craters to segmentation masks](##Craters-to-segmentation-masks)
     4. [Craters to bounding boxes](##Craters-to-bounding-boxes)
-7. [References](#References)
+9. [References](#References)
 
 ***
 
 
 # Docker containers
 
-Navigate to respective dockerfile and build the containers
+Navigate to respective dockerfile in the segmentation or object detection directories and build the containers
 
     docker build -t segmentation .
     docker build -t detection .
 
+you can run the containers in the background with screen
+
+    screen -S segmentation
+
+    docker run -it -p 8888:8888 -p 16006:16006 --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar segmentation:latest
+
+
+
+**Start the notebook:**
+
+    jupyter notebook --ip=0.0.0.0 --no-browser --allow-root
+
+Copy the notebook link and then detach the screen environment with:
+
+    ctlr + a + d
+
+# Training data
+
+<img src="images/study_area.PNG" alt="Study area" width="50%"/>
 
 # Create digital elevation model
 The laser data contained 1-2 points / m2 and can be downloaded from Lantmäteriet: https://www.lantmateriet.se/en/geodata/geodata-products/product-list/laser-data-download-forest/
 
 The Laser data is stored as .laz tiles where each tile is 2 500 m x 2 500 m
 **Select lidar tiles based on locatiaon of training data**\
-First create a polygon that can be used to select relevant laz tiles:
+First pool all laz files in a single directory
 
-    python /workspace/code/create_aoi_poolygon.py /workspace/lidar/none.shp /workspace/data/hunting_pits/Fangstgrop_training_Holmen_Cissi_695st_220214.shp /workspace/lidar/pooled_laz_files/ /workspace/data/hunting_pits/laz/
+    python /workspace/code/tools/pool_laz.py
 
-## Convert laz to dem
+Create a shapefile index of all laz tiles in the pooled directory
 
-    python /workspace/code/laz_to_dem.py /workspace/data/hunting_pits/laz/ /workspace/data/hunting_pits/dem_tiles/
+    python /workspace/code/tools/lidar_tile_footprint.py /workspace/lidar/pooled_laz_files/ /workspace/code/data/footprint.shp
+
+Use the tile index and a shapefile of all field data to create a polygon that can be used to select and copy relevant laz tilesto a new directory
+
+    python /workspace/code/tools/copy_laz_tiles.py /workspace/code/data/footprint.shp /workspace/code/data/cultural_remains.shp /workspace/lidar/pooled_laz_files/ /workspace/data/selected_lidar_tiles/
+
+Finally use whitebox tools to create digital elevation models from the selected lidar data
+
+    python /workspace/code/tools/laz_to_dem.py /workspace/data/selected_lidar_tiles/ /workspace/data/hunting_pits/dem_tiles/ 0.5
 # Extract topographical features
-
+    python /workspace/code/pool_laz.py
 
 ## Extract and normalize topographical indices
     python /workspace/code/Extract_topographcical_indices.py /workspace/temp_dir/ /workspace/data/hunting_pits/laz/ /workspace/data/hunting_pits/topographical_indices_normalized/hillshade/ /workspace/data/hunting_pits/topographical_indices_normalized/slope/ /workspace/data/hunting_pits/topographical_indices_normalized/hpmf/ /workspace/data/hunting_pits/topographical_indices_normalized/stdon/
@@ -143,19 +171,7 @@ The charcoal kilns in the trainig data were between x and y pixels with an avera
 ## Craters to bounding boxes
 
 # Old notes
-**Run container in the background with screen:**
 
-    screen -S notebook
-
-    docker run -it -p 8888:8888 -p 16006:16006 --gpus all --mount type=bind,source=/mnt/Extension_100TB/William/GitHub/ Remnants-of-charcoal-kilns/,target=/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar cultural:latest
-
-**Start the notebook:**
-
-    jupyter notebook --ip=0.0.0.0 --no-browser --allow-root
-
-detach the screen environment:
-
-    ctlr + a + d
 
 ## Train model - test with hillshade only  
 log 34 was trained on only hillshades and got mcc 0.85  

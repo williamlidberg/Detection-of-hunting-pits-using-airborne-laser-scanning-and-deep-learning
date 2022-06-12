@@ -1,18 +1,13 @@
-#from PIL import Image
-#import numpy
 import tifffile as tiff
-#import cv2
 import numpy as np
 import sys
 sys.path
 from osgeo import ogr
 from osgeo import gdal
 from osgeo import osr
-#import os
 
-#def write_gtiff(array, gdal_obj, outputpath, dtype=gdal.GDT_UInt16, options=0, color_table=0, nbands=1, nodata=False):
+
 def write_gtiff(array, gdal_obj, outputpath, dtype=gdal.GDT_Byte, options=0, color_table=0, nbands=1, nodata=False):
-
     """
     Writes a geotiff.
 
