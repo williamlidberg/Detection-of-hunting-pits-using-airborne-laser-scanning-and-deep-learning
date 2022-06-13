@@ -85,40 +85,57 @@ Use the tile index and a shapefile of all field data to create a polygon that ca
 
 Finally use whitebox tools to create digital elevation models from the selected lidar data
 
-    python /workspace/code/tools/laz_to_dem.py /workspace/data/selected_lidar_tiles/ /workspace/data/hunting_pits/dem_tiles/ 0.5
-# Extract topographical features
-    python /workspace/code/pool_laz.py
+    python /workspace/code/tools/laz_to_dem.py /workspace/data/selected_lidar_tiles/ /workspace/data/dem_tiles/ 0.5
 
 ## Extract and normalize topographical indices
-    python /workspace/code/Extract_topographcical_indices.py /workspace/temp_dir/ /workspace/data/hunting_pits/laz/ /workspace/data/hunting_pits/topographical_indices_normalized/hillshade/ /workspace/data/hunting_pits/topographical_indices_normalized/slope/ /workspace/data/hunting_pits/topographical_indices_normalized/hpmf/ /workspace/data/hunting_pits/topographical_indices_normalized/stdon/
+The topographical data will be the same for both segmentation and object detection. All topographical indices are extracted using [Whitebox Tools](https://www.whiteboxgeo.com/manual/wbt_book/preface.html). The indices used are:  
+    1. [Multidirectional hillshade]()  
+    2. [Slope](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=slope#slope)  
+    3. [High pass median filter](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/image_processing_tools_filters.html?highlight=high%20pass%20meda#highpassmedianfilter)  
+    4. [Spherical standard deviation of normals](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=circular#sphericalstddevofnormals)
+
+
+This script extracts the topographical indices and normalizes them between 0 and 1.
+
+    python /workspace/code/Extract_topographcical_indices.py /workspace/temp_dir/ /workspace/data/dem_tiles/ /workspace/data/topographical_indices_normalized/hillshade/ /workspace/data/topographical_indices_normalized/slope/ /workspace/data/topographical_indices_normalized/hpmf/ /workspace/data/topographical_indices_normalized/stdon/
 
 # Semantic segmentation
+Semantic segmentation uses masks where each pixel in the mask coresponds to a class. In our case the classes are:
+0. Background values
+1. Hunting pits
+2. Charcoal kilns
+3. 
+4. 
+5. 
 
+The training data is stored as digitized polygons where each feature class is stored in the column named "class"
 ## Create segmentation masks
-    python /code/utils/create_labels.py /data/selected_dems/ /data/charcoal_kilns/charcoal_kilns_buffer.shp /data/label_tiles/
+    python /workspace/code/semantic_segmentation/create_segmentation_masks.py /workspace/data/dem_tiles/ /workspace/code/data/cultural_remains.shp class /workspace/data/segmentation_masks/
 ## Create image chips
 
-Split tiles into smaller image chips make sure the directory is empty/new so the split starts at 1 each time
- 
-**Split hillshade**
+Split tiles into smaller image chips.
+```diff
+- Make sure the directory is empty/new so the split starts at 1 each time
+```
 
-    python /code/split_training_data.py /data/topographical_indices_normalized/hillshade/ /data/split_data/hillshade/ --tile_size 256
+    # Split hillshade
+    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/hillshade/ /workspace/data/split_data/hillshade/ --tile_size 256
 
-**Split slope**
+    # split slope
+    python /workspace/code/split_training_data.py /workspace/data/topographical_indices_normalized/slope/ /workspace/data/split_data/slope/ --tile_size 256
 
-    python /code/split_training_data.py /data/topographical_indices_normalized/slope/ /data/split_data/slope/ --tile_size 256
+    # split high pass median filter
+    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/hpmf/ /workspace/data/split_data/hpmf/ --tile_size 256
 
-**split high pass median filter**  
+    # Spherical Std Dev Of Normals
+    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/stdon/ /workspace/data/split_data/hpmf/ --tile_size 256
 
-    python /code/split_training_data.py /data/topographical_indices_normalized/hpmf/ /data/split_data/hpmf/ --tile_size 256
-
-**Split labels** 
-
-    python /code/split_training_data.py /data/label_tiles/ /data/split_data/labels/ --tile_size 256
+    # Split labels
+    python /workspace/code/tools/split_training_data.py /data/label_tiles/ /workspace/data/split_data/labels/ --tile_size 256
 
 **Remove chips without labels**
 
-    python /workspace/code/remove_unlabled_chips.py 1 /workspace/data/split_data/labels/ /workspace/data/split_data/hillshade/ /workspace/data/split_data/slope/ /workspace/data/split_data/hpmf/
+    python /workspace/code/tools/remove_unlabled_chips.py 1 /workspace/data/split_data/labels/ /workspace/data/split_data/hillshade/ /workspace/data/split_data/slope/ /workspace/data/split_data/hpmf/
 
 Segmentation masks of charcoal kilns, hillshade, local slope, high pass median filter and standard deviation of normals
 

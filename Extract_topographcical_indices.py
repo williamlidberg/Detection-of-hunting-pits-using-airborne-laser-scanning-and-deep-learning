@@ -1,14 +1,14 @@
 import os
 import argparse
 import tifffile
-import pathlib
+from osgeo import gdal
 import utils.WriteGeotiff
 import whitebox
 wbt = whitebox.WhiteboxTools()
 
      #   # write image
      #   img_name = os.path.basename(bands[0]).split('.')[0]
-     #   InutFileWithKnownExtent = gdal.Open(bands[0])
+     #   extent = gdal.Open(bands[0])
      #   utils.WriteGeotiff.write_gtiff(out, InutFileWithKnownExtent,
      #                                  os.path.join(out_path,
      #                                               '{}.{}'.format(img_name,
@@ -19,7 +19,7 @@ class Topographical_indices:
     def __init__(self, temp_dir):
         self.temp_dir = temp_dir
 
-    def hillshade(self, input_path, normalized_hillshade):
+    def hillshade(self, input_path, normalized_hillshade, extent):
         wbt.multidirectional_hillshade(
         dem = input_path, 
         output = self.temp_dir + os.path.basename(input_path), 
@@ -28,9 +28,9 @@ class Topographical_indices:
         full_mode=False)
         img = tifffile.imread(self.temp_dir + os.path.basename(input_path))
         normed_shade = img/32767 # hillshade is a 16 bit signed integer file but only values between 0 and 32767 are used for hillshades
-        tifffile.imwrite(normalized_hillshade, normed_shade.astype('float32'))
+        utils.WriteGeotiff.write_gtiff(normed_shade, extent, normalized_hillshade, gdal.GDT_Float32)
 
-    def slope(self, input_path, normalized_slope):
+    def slope(self, input_path, normalized_slope, extent):
         wbt.slope(
         dem = input_path, 
         output = self.temp_dir + os.path.basename(input_path), 
@@ -38,9 +38,9 @@ class Topographical_indices:
         units= 'degrees')
         img = tifffile.imread(self.temp_dir + os.path.basename(input_path))
         normed_slope = img/90 # no slope can be flatter than 0 degrees or steeper than 90 degrees
-        tifffile.imwrite(normalized_slope, normed_slope.astype('float32'))
+        utils.WriteGeotiff.write_gtiff(normed_slope, extent, normalized_slope, gdal.GDT_Float32)
 
-    def high_pass_median_filter(self, input_path, normalized_hpmf):
+    def high_pass_median_filter(self, input_path, normalized_hpmf, extent):
         wbt.high_pass_median_filter(
         i = input_path, 
         output =  self.temp_dir + os.path.basename(input_path), 
@@ -48,17 +48,17 @@ class Topographical_indices:
         filtery=11, 
         sig_digits=2)
         img = tifffile.imread(self.temp_dir + os.path.basename(input_path))
-        normed_hpmf = (img--1)/(2--1) 
-        tifffile.imwrite(normalized_hpmf, normed_hpmf.astype('float32'))
+        normed_hpmf = (img--1)/(2--1)
+        utils.WriteGeotiff.write_gtiff(normed_hpmf, extent, normalized_hpmf, gdal.GDT_Float32) 
 
-    def spherical_std_dev_of_normals(self, input_path, normalized_stdon):
+    def spherical_std_dev_of_normals(self, input_path, normalized_stdon, extent):
         wbt.spherical_std_dev_of_normals(
         dem = input_path, 
         output = self.temp_dir + os.path.basename(input_path), 
         filter=5)
         img = tifffile.imread(self.temp_dir + os.path.basename(input_path))
-        normed_stdon = img/30 
-        tifffile.imwrite(normalized_stdon, normed_stdon.astype('float32'))
+        normed_stdon = img/30
+        utils.WriteGeotiff.write_gtiff(normed_stdon, extent, normalized_stdon, gdal.GDT_Float32)  
 
 def clean_temp(temp_dir):
     for root, dir, fs in os.walk(temp_dir):
@@ -83,16 +83,17 @@ def main(temp_dir, input_path, output_path_hillshade, output_path_slope, output_
         slope = os.path.join(output_path_slope,'{}.{}'.format(img_name, 'tif'))
         high_pass_median_filter = os.path.join(output_path_hpmf,'{}.{}'.format(img_name, 'tif'))
         spherical_std_dev_of_normals = os.path.join(output_path_stdon,'{}.{}'.format(img_name, 'tif'))
-
+        
+        extent = gdal.Open(img_path) # extract projection and extent from input image
         topographical = Topographical_indices(temp_dir)
         clean_temp(temp_dir)
-        topographical.hillshade(img_path, hillshade)
+        topographical.hillshade(img_path, hillshade, extent)
         clean_temp(temp_dir)
-        topographical.slope(img_path, slope)
+        topographical.slope(img_path, slope, extent)
         clean_temp(temp_dir)
-        topographical.high_pass_median_filter(img_path, high_pass_median_filter)
+        topographical.high_pass_median_filter(img_path, high_pass_median_filter, extent)
         clean_temp(temp_dir)
-        topographical.spherical_std_dev_of_normals(img_path, spherical_std_dev_of_normals)
+        topographical.spherical_std_dev_of_normals(img_path, spherical_std_dev_of_normals, extent)
         clean_temp(temp_dir)
 
 if __name__ == '__main__':

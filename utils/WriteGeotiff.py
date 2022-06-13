@@ -7,14 +7,15 @@ from osgeo import gdal
 from osgeo import osr
 
 
-def write_gtiff(array, gdal_obj, outputpath, dtype=gdal.GDT_Byte, options=0, color_table=0, nbands=1, nodata=False):
+def write_gtiff(array, gdal_obj, outputpath, dtype, options=0, color_table=0, nbands=1, nodata=False):
     """
     Writes a geotiff.
 
     array: numpy array to write as geotiff
     gdal_obj: object created by gdal.Open() using a tiff that has the SAME CRS, geotransform, and size as the array you're writing
     outputpath: path including filename.tiff
-    dtype (OPTIONAL): datatype to save as
+    dtype (OPTIONAL): datatype to save as. use gdal.GDT_Float32 for floating point and gdal.GDT_Byte for 4 bit int: https://gdal.org/drivers/raster/gtiff.html
+    select from Byte, UInt16, Int16, UInt32, Int32, Float32, Float64, CInt16, CInt32, CFloat32 and CFloat64
     nodata (default: FALSE): set to any value you want to use for nodata; if FALSE, nodata is not set
     """
 
