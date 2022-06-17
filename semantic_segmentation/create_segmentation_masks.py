@@ -23,7 +23,6 @@ def main(base_file_path, input_observations, field, output_label_path):
     convert_polygon_segmentation(base_file_path, input_observations, field, output_label_path)
 
 
-
 if __name__ == '__main__':
     import argparse
 

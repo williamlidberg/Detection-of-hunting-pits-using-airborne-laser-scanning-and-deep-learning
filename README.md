@@ -122,7 +122,7 @@ Split tiles into smaller image chips.
     python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/hillshade/ /workspace/data/split_data/hillshade/ --tile_size 256
 
     # split slope
-    python /workspace/code/split_training_data.py /workspace/data/topographical_indices_normalized/slope/ /workspace/data/split_data/slope/ --tile_size 256
+    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/slope/ /workspace/data/split_data/slope/ --tile_size 256
 
     # split high pass median filter
     python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/hpmf/ /workspace/data/split_data/hpmf/ --tile_size 256
@@ -131,11 +131,11 @@ Split tiles into smaller image chips.
     python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/stdon/ /workspace/data/split_data/hpmf/ --tile_size 256
 
     # Split labels
-    python /workspace/code/tools/split_training_data.py /data/label_tiles/ /workspace/data/split_data/labels/ --tile_size 256
+    python /workspace/code/tools/split_training_data.py /workspace/data/segmentation_masks/ /workspace/data/split_data/labels/ --tile_size 256
 
 **Remove chips without labels**
 
-    python /workspace/code/tools/remove_unlabled_chips.py 1 /workspace/data/split_data/labels/ /workspace/data/split_data/hillshade/ /workspace/data/split_data/slope/ /workspace/data/split_data/hpmf/
+    python /workspace/code/tools/remove_unlabled_chips.py 1 /workspace/data/split_data/labels/ /workspace/data/split_data/hillshade/ /workspace/data/split_data/slope/ /workspace/data/split_data/hpmf/ /workspace/data/split_data/stdon/
 
 Segmentation masks of charcoal kilns, hillshade, local slope, high pass median filter and standard deviation of normals
 
@@ -146,9 +146,11 @@ Segmentation masks of hunting pits, hillshade, local slope, high pass median fil
 <img src="images/Hunting_pits.PNG" alt="Hunting pits" width="80%"/>
 
 ## Train U-net
-This is an example on how to train the model in the docker cotnainer:
+This is an example on how to train the model with one topographical indice:
+    python /workspace/code/train.py -I /workspace/data/split_data/hillshade/ /workspace/data/split_data/labels/ /workspace/data/logfiles/log1/ --seed=40 --epochs 10
 
-    python /workspace/code/train.py -I /workspace/data/split_data/hillshade/ -I /workspace/data/split_data/slope/ -I /workspace/data/split_data/hpmf/ /workspace/data/split_data/labels/ /workspace/data/logfiles/log1/ --seed=40 --epochs 10 
+This is an example on how to train the model with all topographical indicies:
+    python /workspace/code/train.py -I /workspace/data/split_data/hillshade/ -I /workspace/data/split_data/slope/ -I /workspace/data/split_data/hpmf/ -I /workspace/data/split_data/stdon/ /workspace/data/split_data/labels/ /workspace/data/logfiles/log1/ --seed=40 --epochs 10 
 ## Evaluate U-net
     python Y:/William/GitHub/Remnants-of-charcoal-kilns/inference.py Y:/William/Kolbottnar/data/topographical_indices/hillshade/ Y:/William/Kolbottnar/logs/log34/test.h5 D:/kolbottnar/inference/34_inference/ --tile_size=256 --wo_crf
 ## Inference U-net

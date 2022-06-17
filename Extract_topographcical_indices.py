@@ -6,14 +6,6 @@ import utils.WriteGeotiff
 import whitebox
 wbt = whitebox.WhiteboxTools()
 
-     #   # write image
-     #   img_name = os.path.basename(bands[0]).split('.')[0]
-     #   extent = gdal.Open(bands[0])
-     #   utils.WriteGeotiff.write_gtiff(out, InutFileWithKnownExtent,
-     #                                  os.path.join(out_path,
-     #                                               '{}.{}'.format(img_name,
-     #                                                              img_type)))
-
 
 class Topographical_indices:
     def __init__(self, temp_dir):
