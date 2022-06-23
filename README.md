@@ -88,7 +88,7 @@ Finally use whitebox tools to create digital elevation models from the selected 
     python /workspace/code/tools/laz_to_dem.py /workspace/data/selected_lidar_tiles/ /workspace/data/dem_tiles/ 0.5
 
 ## Extract and normalize topographical indices
-The topographical data will be the same for both segmentation and object detection. All topographical indices are extracted using [Whitebox Tools](https://www.whiteboxgeo.com/manual/wbt_book/preface.html). The indices used are:  
+Training a model directly on the digital elevation model is not practical since the values ranges from 0 to 2000 m. Instead different topographical indices were extracted from the DEM. The topographical data will be the same for both segmentation and object detection. All topographical indices are extracted using [Whitebox Tools](https://www.whiteboxgeo.com/manual/wbt_book/preface.html). The indices used are:  
     1. [Multidirectional hillshade]()  
     2. [Slope](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=slope#slope)  
     3. [High pass median filter](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/image_processing_tools_filters.html?highlight=high%20pass%20meda#highpassmedianfilter)  
@@ -108,9 +108,17 @@ Semantic segmentation uses masks where each pixel in the mask coresponds to a cl
 4. 
 5. 
 
-The training data is stored as digitized polygons where each feature class is stored in the column named "class"
+<img src="images/Hunting_kids.jpg" alt="Study area" width="75%"/>\
+The left image is a hunting pit (kids for scale) and the right image is the same hunting pit in the digital elevation model.
+
+
+
+
+
 ## Create segmentation masks
-    python /workspace/code/semantic_segmentation/create_segmentation_masks.py /workspace/data/dem_tiles/ /workspace/code/data/cultural_remains.shp class /workspace/data/segmentation_masks/
+The training data is stored as digitized polygons where each feature class is stored in the column named "class"
+
+    python /workspace/code/semantic_segmentation/create_segmentation_masks.py /workspace/data/dem_tiles/ /workspace/code/data/cultural_remains.shp classvalue /workspace/data/segmentation_masks/
 ## Create image chips
 
 Split tiles into smaller image chips.
@@ -119,19 +127,19 @@ Split tiles into smaller image chips.
 ```
 
     # Split hillshade
-    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/hillshade/ /workspace/data/split_data/hillshade/ --tile_size 256
+    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/hillshade/ /workspace/data/split_data/hillshade/ --tile_size 250
 
     # split slope
-    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/slope/ /workspace/data/split_data/slope/ --tile_size 256
+    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/slope/ /workspace/data/split_data/slope/ --tile_size 250
 
     # split high pass median filter
-    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/hpmf/ /workspace/data/split_data/hpmf/ --tile_size 256
+    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/hpmf/ /workspace/data/split_data/hpmf/ --tile_size 250
 
     # Spherical Std Dev Of Normals
-    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/stdon/ /workspace/data/split_data/hpmf/ --tile_size 256
+    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/stdon/ /workspace/data/split_data/hpmf/ --tile_size 250
 
     # Split labels
-    python /workspace/code/tools/split_training_data.py /workspace/data/segmentation_masks/ /workspace/data/split_data/labels/ --tile_size 256
+    python /workspace/code/tools/split_training_data.py /workspace/data/segmentation_masks/ /workspace/data/split_data/labels/ --tile_size 250
 
 **Remove chips without labels**
 
@@ -145,16 +153,19 @@ Segmentation masks of hunting pits, hillshade, local slope, high pass median fil
 
 <img src="images/Hunting_pits.PNG" alt="Hunting pits" width="80%"/>
 
-## Train U-net
-This is an example on how to train the model with one topographical indice:
-    python /workspace/code/train.py -I /workspace/data/split_data/hillshade/ /workspace/data/split_data/labels/ /workspace/data/logfiles/log1/ --seed=40 --epochs 10
+## Split data into training and testing data
 
-This is an example on how to train the model with all topographical indicies:
-    python /workspace/code/train.py -I /workspace/data/split_data/hillshade/ -I /workspace/data/split_data/slope/ -I /workspace/data/split_data/hpmf/ -I /workspace/data/split_data/stdon/ /workspace/data/split_data/labels/ /workspace/data/logfiles/log1/ --seed=40 --epochs 10 
+
+## Train U-net
+This is an example on how to train the model with multiple topographical indices:
+
+    python /workspace/code/train_unet.py -I /workspace/data/split_data/hillshade/ -I /workspace/data/split_data/hpmf/ -I /workspace/data/split_data/slope/ -I /workspace/data/split_data/stdon/ /workspace/data/split_data/labels/ /workspace/data/logfiles/charcoal_hunting1/ --weighting="0.1,1,1" --seed=40 --epochs 10
+
 ## Evaluate U-net
-    python Y:/William/GitHub/Remnants-of-charcoal-kilns/inference.py Y:/William/Kolbottnar/data/topographical_indices/hillshade/ Y:/William/Kolbottnar/logs/log34/test.h5 D:/kolbottnar/inference/34_inference/ --tile_size=256 --wo_crf
+    python /workspace/code/evaluate_unet.py -I /workspace/data/split_data/hillshade/ -I /workspace/data/split_data/hpmf/ -I /workspace/data/split_data/slope/ -I /workspace/data/split_data/stdon/ /workspace/data/split_data/labels/ /workspace/data/logfiles/charcoal_hunting1/trained.h5 /workspace/data/logfiles/charcoal_hunting1/eval.csv --selected_imgs=/workspace/data/logfiles/charcoal_hunting1/valid_imgs.txt --classes=0,1,2
+
 ## Inference U-net
-    python Y:/William/GitHub/Remnants-of-charcoal-kilns/inference.py Y:/William/Kolbottnar/data/topographical_indices/hillshade/ Y:/William/Kolbottnar/logs/log34/test.h5 D:/kolbottnar/inference/34_inference/ --tile_size=256 --wo_crf
+    python /workspace/code/inference_unet.py Y:/William/Kolbottnar/data/topographical_indices/hillshade/ Y:/William/Kolbottnar/logs/charcoal_hunting1/test.h5 D:/kolbottnar/inference/34_inference/ --tile_size=256 --wo_crf
 ## Post-processing U-net
     python Y:/William/GitHub/Remnants-of-charcoal-kilns/post_processing.py D:/kolbottnar/inference/34_inference/ D:/kolbottnar/inference/34_post_processing/raw_polygons/ D:/kolbottnar/inference/34_post_processing/filtered_polygons/ --min_area=400 --min_ratio=-0.3
 # Object detection
