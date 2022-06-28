@@ -7,7 +7,7 @@ from osgeo import gdal
 from osgeo import osr
 
 
-def write_gtiff(array, gdal_obj, outputpath, dtype, options=0, color_table=0, nbands=1, nodata=False):
+def write_gtiff(array, gdal_obj, outputpath, dtype=gdal.GDT_UInt16, options=0, color_table=0, nbands=1, nodata=False):
     """
     Writes a geotiff.
 

@@ -145,6 +145,8 @@ Split tiles into smaller image chips.
 
     python /workspace/code/tools/remove_unlabled_chips.py 1 /workspace/data/split_data/labels/ /workspace/data/split_data/hillshade/ /workspace/data/split_data/slope/ /workspace/data/split_data/hpmf/ /workspace/data/split_data/stdon/
 
+## Inspect data
+
 Segmentation masks of charcoal kilns, hillshade, local slope, high pass median filter and standard deviation of normals
 
 <img src="images/charcoal kilns.PNG" alt="Charcoal kilns" width="80%"/>
@@ -153,9 +155,25 @@ Segmentation masks of hunting pits, hillshade, local slope, high pass median fil
 
 <img src="images/Hunting_pits.PNG" alt="Hunting pits" width="80%"/>
 
+
+
 ## Split data into training and testing data
+**Create data split**
+
+    python /workspace/code/tools/create_partition.py /workspace/data/split_data/labels/ /workspace/data/test_chips.csv
+
+**Use data split to move test data to new directories**
 
 
+    python /workspace/code/tools/partition_data.py /workspace/data/split_data/labels/ /workspace/data/test_data/labels/ /workspace/data/test_chips.csv
+
+    python /workspace/code/tools/partition_data.py /workspace/data/split_data/hillshade/ /workspace/data/test_data/hillshade/ /workspace/data/test_chips.csv
+
+    python /workspace/code/tools/partition_data.py /workspace/data/split_data/hpmf/ /workspace/data/test_data/hpmf/ /workspace/data/test_chips.csv
+    
+    python /workspace/code/tools/partition_data.py /workspace/data/split_data/slope/ /workspace/data/test_data/slope/ /workspace/data/test_chips.csv
+
+    python /workspace/code/tools/partition_data.py /workspace/data/split_data/stdon/ /workspace/data/test_data/stdon/ /workspace/data/test_chips.csv
 ## Train U-net
 This is an example on how to train the model with multiple topographical indices:
 
@@ -165,7 +183,7 @@ This is an example on how to train the model with multiple topographical indices
     python /workspace/code/evaluate_unet.py -I /workspace/data/split_data/hillshade/ -I /workspace/data/split_data/hpmf/ -I /workspace/data/split_data/slope/ -I /workspace/data/split_data/stdon/ /workspace/data/split_data/labels/ /workspace/data/logfiles/charcoal_hunting1/trained.h5 /workspace/data/logfiles/charcoal_hunting1/eval.csv --selected_imgs=/workspace/data/logfiles/charcoal_hunting1/valid_imgs.txt --classes=0,1,2
 
 ## Inference U-net
-    python /workspace/code/inference_unet.py Y:/William/Kolbottnar/data/topographical_indices/hillshade/ Y:/William/Kolbottnar/logs/charcoal_hunting1/test.h5 D:/kolbottnar/inference/34_inference/ --tile_size=256 --wo_crf
+    python /workspace/code/inference_unet.py -I /workspace/data/test_data/hillshade/ -I /workspace/data/test_data/hpmf/ -I /workspace/data/test_data/slope/ -I /workspace/data/test_data/stdon/ /workspace/data/logfiles/charcoal_hunting3/trained.h5 /workspace/data/inference_unet/
 ## Post-processing U-net
     python Y:/William/GitHub/Remnants-of-charcoal-kilns/post_processing.py D:/kolbottnar/inference/34_inference/ D:/kolbottnar/inference/34_post_processing/raw_polygons/ D:/kolbottnar/inference/34_post_processing/filtered_polygons/ --min_area=400 --min_ratio=-0.3
 # Object detection
