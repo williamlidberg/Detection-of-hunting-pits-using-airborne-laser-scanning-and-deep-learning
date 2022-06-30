@@ -9,7 +9,8 @@ from PIL import Image
 import numpy as np
 import pybboxes as pbx
 
-def boxes(temp_dir, labels_dir, size, label_class, bounding_box_dir):
+
+def boxes(temp_dir, labels_dir, image_size, label_class, bounding_box_dir):
     for tile in os.listdir(labels_dir):
         if tile.endswith('.tif'):
             mask = tifffile.imread(labels_dir + tile)
@@ -19,22 +20,21 @@ def boxes(temp_dir, labels_dir, size, label_class, bounding_box_dir):
             mask_from_array.save(temp_img) # save image as png so it can be read with read_img. There must be a better way to do this.
             mask = read_image(temp_img) 
             obj_ids = torch.unique(mask)
-            obj_ids = obj_ids[1:] # first id is the background, so remove it.
+            obj_ids = obj_ids[1:] 
             masks = mask == obj_ids[:, None, None]
-            
             boxes = masks_to_boxes(masks)
-            #print(masks)
             
+            # convert voc style of bounding boxes to yolo style.
             boxers = torch.Tensor(boxes).numpy()
-            W = size
-            H = size
+            W = image_size
+            H = image_size
             for box in boxers: 
                 x_min = box.item(0)
                 y_min = box.item(1)
                 x_max = box.item(2)
                 y_max = box.item(3)
                 voc = x_min, y_min, x_max, y_max
-                yolo = pbx.convert_bbox(voc, from_type="voc", to_type="yolo", image_width=W, image_height=H)
+                yolo = pbx.convert_bbox(voc, from_type="voc", to_type="yolo", image_width=W , image_height=H)
                 yolo_list = [str(i) for i in list(yolo)]
                 yolo_list.insert(0,str(label_class))
                 with open(os.path.join(bounding_box_dir, tile.replace('.tif', '.txt')), 'a') as f:
@@ -47,9 +47,10 @@ def clean_temp(temp_dir):
             os.remove(os.path.join(root, f))
 
 
-def main(temp_dir, labels_dir,image_size, label_class, bounding_box_dir):
-    boxes(temp_dir, labels_dir,image_size, label_class, bounding_box_dir)
+def main(temp_dir, labels_dir, image_size, label_class, bounding_box_dir):
+    boxes(temp_dir, labels_dir, image_size, label_class, bounding_box_dir)
 
+    clean_temp(temp_dir)
 if __name__ == '__main__':
     import argparse
 

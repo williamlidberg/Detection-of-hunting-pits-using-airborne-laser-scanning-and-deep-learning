@@ -45,8 +45,9 @@ Navigate to respective dockerfile in the segmentation or object detection direct
 
     docker build -t segmentation .
     docker build -t detection .
+    docker build -t detection https://github.com/williamlidberg/Cultural-remains.git#main:object_detection
 
-you can run the containers in the background with screen
+you can run the containerdockers in the background with screen
 
     screen -S segmentation
 
@@ -99,6 +100,9 @@ This script extracts the topographical indices and normalizes them between 0 and
 
     python /workspace/code/Extract_topographcical_indices.py /workspace/temp_dir/ /workspace/data/dem_tiles/ /workspace/data/topographical_indices_normalized/hillshade/ /workspace/data/topographical_indices_normalized/slope/ /workspace/data/topographical_indices_normalized/hpmf/ /workspace/data/topographical_indices_normalized/stdon/
 
+<img src="images/distribution.PNG" alt="Distribution of normalized topographical indicies" width="50%"/>\
+Distribution of the normalised topographical indices
+
 # Semantic segmentation
 Semantic segmentation uses masks where each pixel in the mask coresponds to a class. In our case the classes are:
 0. Background values
@@ -118,7 +122,7 @@ The left image is a hunting pit (kids for scale) and the right image is the same
 ## Create segmentation masks
 The training data is stored as digitized polygons where each feature class is stored in the column named "class"
 
-    python /workspace/code/semantic_segmentation/create_segmentation_masks.py /workspace/data/dem_tiles/ /workspace/code/data/cultural_remains.shp classvalue /workspace/data/segmentation_masks/
+    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles/ /workspace/code/data/cultural_remains.shp classvalue /workspace/data/segmentation_masks/
 ## Create image chips
 
 Split tiles into smaller image chips.
@@ -142,8 +146,9 @@ Split tiles into smaller image chips.
     python /workspace/code/tools/split_training_data.py /workspace/data/segmentation_masks/ /workspace/data/split_data/labels/ --tile_size 250
 
 **Remove chips without labels**
+image chips with less than four labeled pixels were removed. The reason for using four pixels is that the bounding box courdinates can not be identical. For this reason objects smaller than one square meter are excluded. 
 
-    python /workspace/code/tools/remove_unlabled_chips.py 1 /workspace/data/split_data/labels/ /workspace/data/split_data/hillshade/ /workspace/data/split_data/slope/ /workspace/data/split_data/hpmf/ /workspace/data/split_data/stdon/
+    python /workspace/code/tools/remove_unlabled_chips.py 4 /workspace/data/split_data/labels/ /workspace/data/split_data/hillshade/ /workspace/data/split_data/slope/ /workspace/data/split_data/hpmf/ /workspace/data/split_data/stdon/
 
 ## Inspect data
 
@@ -177,19 +182,68 @@ Segmentation masks of hunting pits, hillshade, local slope, high pass median fil
 ## Train U-net
 This is an example on how to train the model with multiple topographical indices:
 
-    python /workspace/code/train_unet.py -I /workspace/data/split_data/hillshade/ -I /workspace/data/split_data/hpmf/ -I /workspace/data/split_data/slope/ -I /workspace/data/split_data/stdon/ /workspace/data/split_data/labels/ /workspace/data/logfiles/charcoal_hunting1/ --weighting="0.1,1,1" --seed=40 --epochs 10
-
+    python /workspace/code/train_unet.py -I /workspace/data/split_data/hillshade/ -I /workspace/data/split_data/hpmf/ -I /workspace/data/split_data/slope/ -I /workspace/data/split_data/stdon/ /workspace/data/split_data/labels/ /workspace/data/logfiles/charcoal_hunting5/ --weighting="0.1,1,1" --seed=40 --epochs 100
 ## Evaluate U-net
-    python /workspace/code/evaluate_unet.py -I /workspace/data/split_data/hillshade/ -I /workspace/data/split_data/hpmf/ -I /workspace/data/split_data/slope/ -I /workspace/data/split_data/stdon/ /workspace/data/split_data/labels/ /workspace/data/logfiles/charcoal_hunting1/trained.h5 /workspace/data/logfiles/charcoal_hunting1/eval.csv --selected_imgs=/workspace/data/logfiles/charcoal_hunting1/valid_imgs.txt --classes=0,1,2
-
+    python /workspace/code/evaluate_unet.py -I /workspace/data/split_data/hillshade/ -I /workspace/data/split_data/hpmf/ -I /workspace/data/split_data/slope/ -I /workspace/data/split_data/stdon/ /workspace/data/split_data/labels/ /workspace/data/logfiles/charcoal_hunting5/trained.h5 /workspace/data/logfiles/charcoal_hunting5/eval.csv --selected_imgs=/workspace/data/logfiles/charcoal_hunting5/valid_imgs.txt --classes=0,1,2
 ## Inference U-net
     python /workspace/code/inference_unet.py -I /workspace/data/test_data/hillshade/ -I /workspace/data/test_data/hpmf/ -I /workspace/data/test_data/slope/ -I /workspace/data/test_data/stdon/ /workspace/data/logfiles/charcoal_hunting3/trained.h5 /workspace/data/inference_unet/
 ## Post-processing U-net
     python Y:/William/GitHub/Remnants-of-charcoal-kilns/post_processing.py D:/kolbottnar/inference/34_inference/ D:/kolbottnar/inference/34_post_processing/raw_polygons/ D:/kolbottnar/inference/34_post_processing/filtered_polygons/ --min_area=400 --min_ratio=-0.3
 # Object detection
+This section uses the docker container tagged "detection".    
 
-## Create bounding boxes
+    screen -S detection
 
+    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar detection:latest
+
+## Create segmentation masks
+This script needs segmentation masks where each object has its own uniqe ID. I could not figure out how to convert segmentation masks with multiple objects labeled with the same ID. To work around this issue I created individual segmentation masks for each object and merged the bounding boxes aftewards.
+
+**Explode observations based on object type**
+    python /workspace/code/tools/explode_observations.py /workspace/code/data/remains.shp Classvalue /workspace/data/object_detection/explode_objects/
+
+**Segmentation masks for hunting pits**
+
+    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles/ /workspace/data/object_detection/explode_objects/1.shp object_id /workspace/data/object_detection/segmentation_masks/hunting_pits/
+
+**Segmentation masks for charcoal kilns**
+
+    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles/ /workspace/data/object_detection/explode_objects/2.shp object_id /workspace/data/object_detection/segmentation_masks/charcoal_kilns/
+
+
+    1. Give each object uniqe IDs
+    2. split shapefile based on IDs
+    3. run "create_segmentation_masks.py on seperate shapefiles what happens with empty tiles?
+    4. Split tiles to chips
+
+This only works if the chips have the same names....
+split will give tiles the same name!
+
+The shapefile containing the labeled features were split into seperate files for each type of object.
+
+
+## split segmentation masks
+
+**split segmentation masks - Hunting pits**
+
+    python /workspace/code/tools/split_training_data.py /workspace/data/object_detection/segmentation_masks/hunting_pits/ /workspace/data/object_detection/split_segmentations_masks/hunting_pits --tile_size 250
+
+**split segmentation masks - Charcoal kilns**
+
+    python /workspace/code/tools/split_training_data.py /workspace/data/segmentation_masks/ /workspace/data/object_detection/split_segmentations_masks/charcoal_kilns --tile_size 250
+
+
+**Merge segmentation masks**
+
+**Create segmentation masks with uniqe IDs**
+    python /workspace/code/semantic_segmentation/create_segmentation_masks.py /workspace/data/dem_tiles/ /workspace/code/data/cultural_remains.shp classvalue /workspace/data/segmentation_masks/
+
+
+This script writes new rows in the existing files. remove existing files before running.
+
+    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/split_data/labels/ 250 1 /workspace/data/split_data/yolo_boxes/
+
+    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/split_data/test_labels/ 250 1 /workspace/data/split_data/yolo_boxes/
 ## Train YOLO
 
 ## Evaluate YOLO
