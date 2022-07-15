@@ -8,7 +8,7 @@
 ## Detect cultural remains from LiDAR data
 
 
-<img src="images/BlackWhite_large_zoom_wide2.png" alt="Charcoal kiln" width="75%"/>
+<img src="images/träd9.png" alt="Charcoal kiln" width="75%"/>
 
 
 # Table of  Contents
