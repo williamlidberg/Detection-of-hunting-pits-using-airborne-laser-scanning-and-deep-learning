@@ -16,7 +16,7 @@
 1. [Docker containers](#Docker-containers)
 3. [Training data](#Training-data)
 4. [Create digital elevation model](#Create-digital-elevation-model)
-5. [Extract topographical features](#Extract-topographical-features)
+5. [Extract and normalize topographical indices](#Extract-and-normalize-topographical-indices)
 6. [Semantic segmentation](#Semantic-segmentation)
     1. [Create segmentation masks](##Create-segmentation-mask)
     2. [Create image chips](##Create-image-chips)
@@ -47,7 +47,7 @@ Navigate to respective dockerfile in the segmentation or object detection direct
     docker build -t detection .
     docker build -t detection https://github.com/williamlidberg/Cultural-remains.git#main:object_detection
 
-you can run the containerdockers in the background with screen
+You can run the container in the background with screen
 
     screen -S segmentation
 
@@ -65,22 +65,21 @@ Copy the notebook link and then detach the screen environment with:
 
 # Training data
 
-<img src="images/study_area.PNG" alt="Study area" width="50%"/>
+<img src="images/study_area.PNG" alt="Study area" width="55%"/>
 
 # Create digital elevation model
-The laser data contained 1-2 points / m2 and can be downloaded from Lantmäteriet: https://www.lantmateriet.se/en/geodata/geodata-products/product-list/laser-data-download-forest/
+The laser data contained 1-2 points / m2 and can be downloaded from Lantmäteriet: https://www.lantmateriet.se/en/geodata/geodata-products/product-list/laser-data-download-forest/. The Laser data is stored as .laz tiles where each tile is 2 500 m x 2 500 m
 
-The Laser data is stored as .laz tiles where each tile is 2 500 m x 2 500 m
 **Select lidar tiles based on locatiaon of training data**\
 First pool all laz files in a single directory
 
     python /workspace/code/tools/pool_laz.py
 
-Create a shapefile index of all laz tiles in the pooled directory
+Then Create a shapefile tile index of all laz tiles in the pooled directory
 
     python /workspace/code/tools/lidar_tile_footprint.py /workspace/lidar/pooled_laz_files/ /workspace/code/data/footprint.shp
 
-Use the tile index and a shapefile of all field data to create a polygon that can be used to select and copy relevant laz tilesto a new directory
+Use the shapefile tile index and a shapefile of all field data to create a polygon that can be used to select and copy relevant laz tilesto a new directory
 
     python /workspace/code/tools/copy_laz_tiles.py /workspace/code/data/footprint.shp /workspace/code/data/cultural_remains.shp /workspace/lidar/pooled_laz_files/ /workspace/data/selected_lidar_tiles/
 
@@ -101,16 +100,15 @@ This script extracts the topographical indices and normalizes them between 0 and
     python /workspace/code/Extract_topographcical_indices.py /workspace/temp_dir/ /workspace/data/dem_tiles/ /workspace/data/topographical_indices_normalized/hillshade/ /workspace/data/topographical_indices_normalized/slope/ /workspace/data/topographical_indices_normalized/hpmf/ /workspace/data/topographical_indices_normalized/stdon/
 
 <img src="images/distribution.PNG" alt="Distribution of normalized topographical indicies" width="50%"/>\
-Distribution of the normalised topographical indices
+Distribution of the normalised topographical indices from one tile.
 
 # Semantic segmentation
 Semantic segmentation uses masks where each pixel in the mask coresponds to a class. In our case the classes are:
+
 0. Background values
 1. Hunting pits
 2. Charcoal kilns
-3. 
-4. 
-5. 
+
 
 <img src="images/Hunting_kids.jpg" alt="Study area" width="75%"/>\
 The left image is a hunting pit (kids for scale) and the right image is the same hunting pit in the digital elevation model.
@@ -196,10 +194,19 @@ This section uses the docker container tagged "detection".
 
     docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar detection:latest
 
-## Create segmentation masks
+## Create bounding boxes
+Bounding boxes requires multiple steps to create:
+
+    1. The observations needs to be split based on object type.\
+    2. New segmentation masks has to be created from those split objects\
+    3. Bounding boxes are created from the segmentation masks.
+    4. Finally bounding boxes are merged
+
 This script needs segmentation masks where each object has its own uniqe ID. I could not figure out how to convert segmentation masks with multiple objects labeled with the same ID. To work around this issue I created individual segmentation masks for each object and merged the bounding boxes aftewards.
 
-**Explode observations based on object type**
+**Split observations based on object type**\
+The Explode observations script takes a shapefile with all training data and splits it into seperate shapefiles based on the feature class type. For example 1.shp = Hunting pits and 2.shp = Charcoal kilns. In the next step the script "create_segmentation_masks.py" is applied to each shapefile seperatly.
+
     python /workspace/code/tools/explode_observations.py /workspace/code/data/remains.shp Classvalue /workspace/data/object_detection/explode_objects/
 
 **Segmentation masks for hunting pits**
@@ -222,20 +229,23 @@ split will give tiles the same name!
 The shapefile containing the labeled features were split into seperate files for each type of object.
 
 
-## split segmentation masks
+## Split segmentation masks
 
-**split segmentation masks - Hunting pits**
+**Split segmentation masks - Hunting pits**
 
     python /workspace/code/tools/split_training_data.py /workspace/data/object_detection/segmentation_masks/hunting_pits/ /workspace/data/object_detection/split_segmentations_masks/hunting_pits --tile_size 250
 
-**split segmentation masks - Charcoal kilns**
+**Split segmentation masks - Charcoal kilns**
 
-    python /workspace/code/tools/split_training_data.py /workspace/data/segmentation_masks/ /workspace/data/object_detection/split_segmentations_masks/charcoal_kilns --tile_size 250
+    python /workspace/code/tools/split_training_data.py /workspace/data/object_detection/segmentation_masks/charcoal_kilns/ /workspace/data/object_detection/split_segmentations_masks/charcoal_kilns --tile_size 250
 
+This resulted in 138 400 image chips
 
-**Merge segmentation masks**
+**TO DO: CREATE BOUNDING BOXES BASED ON SPLIT SEGMENTATION MASKS AND FIND A WAY TO MERGE THEM INTO SINGLE LABELS**
+**Merge segmentation masks?**
 
 **Create segmentation masks with uniqe IDs**
+
     python /workspace/code/semantic_segmentation/create_segmentation_masks.py /workspace/data/dem_tiles/ /workspace/code/data/cultural_remains.shp classvalue /workspace/data/segmentation_masks/
 
 
