@@ -188,7 +188,7 @@ This is an example on how to train the model with multiple topographical indices
 ## Post-processing U-net
     python Y:/William/GitHub/Remnants-of-charcoal-kilns/post_processing.py D:/kolbottnar/inference/34_inference/ D:/kolbottnar/inference/34_post_processing/raw_polygons/ D:/kolbottnar/inference/34_post_processing/filtered_polygons/ --min_area=400 --min_ratio=-0.3
 # Object detection
-This section uses the docker container tagged "detection".    
+This section uses the docker container tagged "detection". the segmentation container is used for some steps since I have not figured out how to install gdal in the detection container.   
 
     screen -S detection
 
@@ -237,9 +237,17 @@ The shapefile containing the labeled features were split into seperate files for
 
 **Split segmentation masks - Charcoal kilns**
 
-    python /workspace/code/tools/split_training_data.py /workspace/data/object_detection/segmentation_masks/charcoal_kilns/ /workspace/data/object_detection/split_segmentations_masks/charcoal_kilns --tile_size 250
+    python /workspace/code/tools/split_training_data.py /workspace/data/object_detection/segmentation_masks/charcoal_kilns/ /workspace/data/object_detection/bounding_boxes/charcoal_kilns --tile_size 250
 
-This resulted in 138 400 image chips
+**Convert segmentation masks to bounding boxes - Hunting pits**
+
+
+    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/split_segmentations_masks/hunting_pits/ 250 1 /workspace/data/object_detection/bounding_boxes/hunting_pits/
+
+**Convert segmentation masks to bounding boxes - Charcoal kilns**
+
+    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/split_segmentations_masks/charcoal_kilns/ 250 2 /workspace/data/object_detection/bounding_boxes/charcoal_kilns/
+
 
 **TO DO: CREATE BOUNDING BOXES BASED ON SPLIT SEGMENTATION MASKS AND FIND A WAY TO MERGE THEM INTO SINGLE LABELS**
 **Merge segmentation masks?**

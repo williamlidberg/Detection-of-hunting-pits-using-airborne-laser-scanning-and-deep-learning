@@ -28,18 +28,21 @@ def boxes(temp_dir, labels_dir, image_size, label_class, bounding_box_dir):
             boxers = torch.Tensor(boxes).numpy()
             W = image_size
             H = image_size
-            for box in boxers: 
-                x_min = box.item(0)
-                y_min = box.item(1)
-                x_max = box.item(2)
-                y_max = box.item(3)
-                voc = x_min, y_min, x_max, y_max
-                yolo = pbx.convert_bbox(voc, from_type="voc", to_type="yolo", image_width=W , image_height=H)
-                yolo_list = [str(i) for i in list(yolo)]
-                yolo_list.insert(0,str(label_class))
-                with open(os.path.join(bounding_box_dir, tile.replace('.tif', '.txt')), 'a') as f:
-                    f.write(" ".join(yolo_list))
-                    f.write('\n')
+            for box in boxers:
+                try: 
+                    x_min = box.item(0)
+                    y_min = box.item(1)
+                    x_max = box.item(2)
+                    y_max = box.item(3)
+                    voc = x_min, y_min, x_max, y_max
+                    yolo = pbx.convert_bbox(voc, from_type="voc", to_type="yolo", image_width=W , image_height=H)
+                    yolo_list = [str(i) for i in list(yolo)]
+                    yolo_list.insert(0,str(label_class))
+                    with open(os.path.join(bounding_box_dir, tile.replace('.tif', '.txt')), 'a') as f:
+                        f.write(" ".join(yolo_list))
+                        f.write('\n')
+                except:
+                    print('failed at file ', tile)
 
 def clean_temp(temp_dir):
     for root, dir, fs in os.walk(temp_dir):
@@ -49,8 +52,8 @@ def clean_temp(temp_dir):
 
 def main(temp_dir, labels_dir, image_size, label_class, bounding_box_dir):
     boxes(temp_dir, labels_dir, image_size, label_class, bounding_box_dir)
-
     clean_temp(temp_dir)
+
 if __name__ == '__main__':
     import argparse
 
