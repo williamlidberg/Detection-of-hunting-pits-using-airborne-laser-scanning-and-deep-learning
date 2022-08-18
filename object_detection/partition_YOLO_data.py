@@ -1,4 +1,5 @@
 # adapted from https://blog.paperspace.com/train-yolov5-custom-data/
+import os
 from sklearn.model_selection import train_test_split
 
 def copy_files_to_folder(list_of_files, destination_folder):

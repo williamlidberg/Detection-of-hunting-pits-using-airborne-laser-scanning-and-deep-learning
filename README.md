@@ -249,19 +249,35 @@ The shapefile containing the labeled features were split into seperate files for
     python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/split_segmentations_masks/charcoal_kilns/ 250 2 /workspace/data/object_detection/bounding_boxes/charcoal_kilns/
 
 
-**TO DO: CREATE BOUNDING BOXES BASED ON SPLIT SEGMENTATION MASKS AND FIND A WAY TO MERGE THEM INTO SINGLE LABELS**
-**Merge segmentation masks?**
+**Merge charcoal kilns and hunting pits's bounding boxes**\
+some image chips contain two classes of bounding boxes. This script merges those text files and then copies everything to a new directory with both overlapping and none overlaping bounding boxes.
 
-**Create segmentation masks with uniqe IDs**
+    python /workspace/code/object_detection/merge_bounding_boxes.py /workspace/data/object_detection/bounding_boxes/hunting_pits/ /workspace/data/object_detection/bounding_boxes/charcoal_kilns/ /workspace/data/object_detection/bounding_boxes/merged_charcoal_hunting/
 
-    python /workspace/code/semantic_segmentation/create_segmentation_masks.py /workspace/data/dem_tiles/ /workspace/code/data/cultural_remains.shp classvalue /workspace/data/segmentation_masks/
+**Select image chips based on the names of bounding boxes files**
+    python /workspace/code/object_detection/select_chips_with_labels.py /workspace/data/object_detection/bounding_boxes/merged_charcoal_hunting/ /workspace/data/split_data/hillshade/ /workspace/data/object_detection/bounding_boxes/topographical_indices/hillshade/ 
+
+**FileNotFoundError: [Errno 2] No such file or directory: '/workspace/data/split_data/hillshade/8004.tif'**
+TODO split data again?
+346 tiles in labels
+346 tiles in selected tiles
+346 tiles in topographical normalized
+
+Try to split again
+    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/hillshade/ /workspace/data/object_detection/split_hillshade/ --tile_size 250
+
+**Partition training data**
+ 
+  
+    parser.add_argument('train_images_dir', help='path to directory of train_images')
+    parser.add_argument('val_images_dir', help = 'path to directory of val_images')
+    parser.add_argument('test_images_dir', help='path to directory of test_images')
+    parser.add_argument('train_annotations_dir', help = 'path to directory of train_annotations')
+    parser.add_argument('val_annotation_dir', help='path to directory of val_annotation')
+    parser.add_argument('test_annotations_dir', help = 'path to directory of test_annotations')
 
 
-This script writes new rows in the existing files. remove existing files before running.
-
-    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/split_data/labels/ 250 1 /workspace/data/split_data/yolo_boxes/
-
-    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/split_data/test_labels/ 250 1 /workspace/data/split_data/yolo_boxes/
+    python /workspace/code/object_detection/partition_YOLO_data.py /workspace/data/object_detection/bounding_boxes/topographical_indices/hillshade /workspace/data/object_detection/bounding_boxes/merged_charcoal_hunting/ /workspace/data/object_detection/bounding_boxes/partitioned_data/train_hillshade /workspace/data/object_detection/bounding_boxes/partitioned_data/val_hillshade /workspace/data/object_detection/bounding_boxes/partitioned_data/test_hillshade /workspace/data/object_detection/bounding_boxes/partitioned_data/train_boxes /workspace/data/object_detection/bounding_boxes/partitioned_data/val_boxes /workspace/data/object_detection/bounding_boxes/partitioned_data/test_boxes
 ## Train YOLO
 
 ## Evaluate YOLO
