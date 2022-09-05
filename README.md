@@ -266,19 +266,24 @@ TODO split data again?
 Try to split again
     python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/hillshade/ /workspace/data/object_detection/split_hillshade/ --tile_size 250
 
-**Partition training data**
+**Partition training data**\
+ The data is split into training data, testing data and validation data. The traning data will be used to train the model and validation data will be used to experiment while the testing data is held for the final results. 
  
-  
-    parser.add_argument('train_images_dir', help='path to directory of train_images')
-    parser.add_argument('val_images_dir', help = 'path to directory of val_images')
-    parser.add_argument('test_images_dir', help='path to directory of test_images')
-    parser.add_argument('train_annotations_dir', help = 'path to directory of train_annotations')
-    parser.add_argument('val_annotation_dir', help='path to directory of val_annotation')
-    parser.add_argument('test_annotations_dir', help = 'path to directory of test_annotations')
 
+    python /workspace/code/object_detection/partition_YOLO_data.py /workspace/data/object_detection/bounding_boxes/topographical_indices/hillshade /workspace/data/object_detection/bounding_boxes/merged_charcoal_hunting/ /workspace/data/object_detection/bounding_boxes/partitioned_data/hillshade/images/train/ /workspace/data/object_detection/bounding_boxes/partitioned_data/hillshade/images/val/ /workspace/data/object_detection/bounding_boxes/partitioned_data/hillshade/images/test/ /workspace/data/object_detection/bounding_boxes/partitioned_data/hillshade/labels/train/ /workspace/data/object_detection/bounding_boxes/partitioned_data/hillshade/labels/val/ /workspace/data/object_detection/bounding_boxes/partitioned_data/hillshade/labels/test/
 
-    python /workspace/code/object_detection/partition_YOLO_data.py /workspace/data/object_detection/bounding_boxes/topographical_indices/hillshade /workspace/data/object_detection/bounding_boxes/merged_charcoal_hunting/ /workspace/data/object_detection/bounding_boxes/partitioned_data/train_hillshade /workspace/data/object_detection/bounding_boxes/partitioned_data/val_hillshade /workspace/data/object_detection/bounding_boxes/partitioned_data/test_hillshade /workspace/data/object_detection/bounding_boxes/partitioned_data/train_boxes /workspace/data/object_detection/bounding_boxes/partitioned_data/val_boxes /workspace/data/object_detection/bounding_boxes/partitioned_data/test_boxes
 ## Train YOLO
+This part is adapted from https://github.com/ultralytics/yolov5
+
+Use the official docker image
+    
+    docker pull ultralytics/yolov5
+
+    docker run -it --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data/object_detection/bounding_boxes/partitioned_data:/workspace/data ultralytics/yolov5:latest
+
+Train the model
+
+    python /workspace/code/object_detection/yolov5/train.py --img 512 --cfg yolov5s.yaml --hyp /workspace/code/object_detection/yolov5/data/hyps/hyp.cultural_hillshade.yaml --batch 16 --epochs 10 --data /workspace/code/object_detection/yolov5/data/cultural_data.yaml --weights yolov5s.pt --workers 24 --name yolo_cultural_one
 
 ## Evaluate YOLO
 

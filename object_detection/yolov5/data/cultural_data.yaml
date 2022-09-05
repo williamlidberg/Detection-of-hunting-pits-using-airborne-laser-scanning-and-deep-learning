@@ -1,0 +1,9 @@
+train: /workspace/data/hillshade/images/train/ 
+val:  /workspace/data/hillshade/images/val/
+test: /workspace/data/hillshade/images/test/
+
+# number of classes
+nc: 2
+
+# class names
+names: ["charcoal_kiln","hunting_pit"]
