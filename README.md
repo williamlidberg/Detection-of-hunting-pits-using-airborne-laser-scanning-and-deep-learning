@@ -186,7 +186,7 @@ The docker container dem:latest was used for post processing due to gdal being a
 
     docker run -it -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data dem:latest
 
-    python /workspace/code/semantic_segmentation/post_processing.py /workspace/data/logfiles/pits/pits4/ /workspace/data/post_processing/raw_polygons/ /workspace/data/post_processing/filtered_polygons/ --min_area=200 --min_ratio=-0.3
+    python /workspace/code/semantic_segmentation/post_processing.py /workspace/data/logfiles/pits/pits4/ /workspace/data/post_processing/raw_polygons/ /workspace/data/post_processing/filtered_polygons/ /workspace/data/post_processing/final_prediction/ --min_area=9 --min_ratio=-0.5
 
 
 
