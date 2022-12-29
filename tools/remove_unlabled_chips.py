@@ -2,7 +2,7 @@ import os
 from tifffile import tifffile
 import numpy as np
 # , image_path_4, image_path_5, image_path_6, image_path_7, image_path_8, image_path_9, image_path_10)
-def main(numpixels, label_path, image_path_1, image_path_2, image_path_3, image_path_4):
+def main(numpixels, label_path, image_path_1, image_path_2, image_path_3, image_path_4, image_path_5):# image_path_2, image_path_3, image_path_4):
     for chip in os.listdir(label_path):
         if chip.endswith('.tif'):          
             labelwithpath = label_path + chip
@@ -10,7 +10,7 @@ def main(numpixels, label_path, image_path_1, image_path_2, image_path_3, image_
             imagewithpath_2 = image_path_2 + chip
             imagewithpath_3 = image_path_3 + chip
             imagewithpath_4 = image_path_4 + chip
-            # imagewithpath_5 = image_path_5 + chip
+            imagewithpath_5 = image_path_5 + chip
             # imagewithpath_6 = image_path_6 + chip
             # imagewithpath_7 = image_path_7 + chip
             # imagewithpath_8 = image_path_8 + chip
@@ -25,7 +25,7 @@ def main(numpixels, label_path, image_path_1, image_path_2, image_path_3, image_
                 os.remove(imagewithpath_2)
                 os.remove(imagewithpath_3)
                 os.remove(imagewithpath_4)
-                # os.remove(imagewithpath_5)
+                os.remove(imagewithpath_5)
                 # os.remove(imagewithpath_6)
                 # os.remove(imagewithpath_7)
                 # os.remove(imagewithpath_8)
@@ -44,7 +44,7 @@ if __name__== '__main__':
     parser.add_argument('image_path_2', help='dir of image path 2')
     parser.add_argument('image_path_3', help='dir of image path 3')
     parser.add_argument('image_path_4', help='dir of image path 3')
-    # parser.add_argument('image_path_5', help='dir of image path 3')
+    parser.add_argument('image_path_5', help='dir of image path 3')
     # parser.add_argument('image_path_6',help='dir of image path 3')
     # parser.add_argument('image_path_7',help='dir of image path 3')
     # parser.add_argument('image_path_8',help='dir of image path 3')

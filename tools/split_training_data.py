@@ -1,5 +1,4 @@
 import os
-from splitraster import io
 from splitraster import geo
 
 def main(input_path, output_path, tile_size):

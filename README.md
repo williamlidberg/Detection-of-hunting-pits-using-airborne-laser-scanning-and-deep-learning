@@ -51,7 +51,8 @@ You can run the container in the background with screen
 
     screen -S segmentation
 
-    docker run -it -p 8888:8888 -p 16006:16006 --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar segmentation:latest
+    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar segmentation:latest
+
 
 
 
@@ -64,8 +65,7 @@ Copy the notebook link and then detach the screen environment with:
     ctlr + a + d
 
 # Training data
-
-<img src="images/study_area.PNG" alt="Study area" width="55%"/>
+The training data were collected from multiple sources. Historical forest maps from local archives where digitized and georeferenced. Open data from the [swedish national heritage board were downloaded and digitized](https://pub.raa.se/). All remains where referenced with the liDAR data in order to match the reported remain to the LiDAR data. In total x hunting pits where manually digitized and corrected this way.
 
 # Create digital elevation model
 The laser data contained 1-2 points / m2 and can be downloaded from Lantmäteriet: https://www.lantmateriet.se/en/geodata/geodata-products/product-list/laser-data-download-forest/. The Laser data is stored as .laz tiles where each tile is 2 500 m x 2 500 m
@@ -77,27 +77,28 @@ First pool all laz files in a single directory
 
 Then Create a shapefile tile index of all laz tiles in the pooled directory
 
-    python /workspace/code/tools/lidar_tile_footprint.py /workspace/lidar/pooled_laz_files/ /workspace/code/data/footprint.shp
+    python /workspace/code/tools/lidar_tile_footprint.py /workspace/lidar/pooled_laz_files/ /workspace/data/footprint.shp
 
 Use the shapefile tile index and a shapefile of all field data to create a polygon that can be used to select and copy relevant laz tilesto a new directory
 
-    python /workspace/code/tools/copy_laz_tiles.py /workspace/code/data/footprint.shp /workspace/code/data/cultural_remains.shp /workspace/lidar/pooled_laz_files/ /workspace/data/selected_lidar_tiles/
+    python /workspace/code/tools/copy_laz_tiles.py /workspace/data/footprint.shp /workspace/data/remains_pits.shp /workspace/lidar/pooled_laz_files/ /workspace/data/selected_lidar_tiles_pits/
 
 Finally use whitebox tools to create digital elevation models from the selected lidar data
 
-    python /workspace/code/tools/laz_to_dem.py /workspace/data/selected_lidar_tiles/ /workspace/data/dem_tiles/ 0.5
+    python /workspace/code/tools/laz_to_dem.py /workspace/data/selected_lidar_tiles_pits/ /workspace/data/dem_tiles_pits/ 0.5
 
 ## Extract and normalize topographical indices
 Training a model directly on the digital elevation model is not practical since the values ranges from 0 to 2000 m. Instead different topographical indices were extracted from the DEM. The topographical data will be the same for both segmentation and object detection. All topographical indices are extracted using [Whitebox Tools](https://www.whiteboxgeo.com/manual/wbt_book/preface.html). The indices used are:  
-    1. [Multidirectional hillshade]()  
-    2. [Slope](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=slope#slope)  
-    3. [High pass median filter](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/image_processing_tools_filters.html?highlight=high%20pass%20meda#highpassmedianfilter)  
-    4. [Spherical standard deviation of normals](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=circular#sphericalstddevofnormals)
+*   [Multidirectionl hillshade](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=multidirec#multidirectionalhillshade)
+*   [Elevation above pit](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=elevation%20above%20pit#elevabovepit)
+* [Min curvature](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=min%20curvature#minimalcurvature)
+* [Profile curvature](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=profile#profilecurvature)
+* [Standard deviations of normals](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=min%20curvature#SphericalStdDevOfNormals)
 
 
 This script extracts the topographical indices and normalizes them between 0 and 1.
 
-    python /workspace/code/Extract_topographcical_indices.py /workspace/temp_dir/ /workspace/data/dem_tiles/ /workspace/data/topographical_indices_normalized/hillshade/ /workspace/data/topographical_indices_normalized/slope/ /workspace/data/topographical_indices_normalized/hpmf/ /workspace/data/topographical_indices_normalized/stdon/
+    python /workspace/code/Extract_topographcical_indices.py /workspace/temp/ /workspace/data/dem_tiles_pits/ /workspace/data/topographical_indices_normalized_pits/hillshade/ /workspace/data/topographical_indices_normalized_pits/elevation_above_pit/ /workspace/data/topographical_indices_normalized_pits/minimal_curvature/ /workspace/data/topographical_indices_normalized_pits/profile_curvature/ /workspace/data/topographical_indices_normalized_pits/stdon/
 
 <img src="images/distribution.PNG" alt="Distribution of normalized topographical indicies" width="50%"/>\
 Distribution of the normalised topographical indices from one tile.
@@ -107,46 +108,45 @@ Semantic segmentation uses masks where each pixel in the mask coresponds to a cl
 
 0. Background values
 1. Hunting pits
-2. Charcoal kilns
+
 
 
 <img src="images/Hunting_kids.jpg" alt="Study area" width="75%"/>\
 The left image is a hunting pit (kids for scale) and the right image is the same hunting pit in the digital elevation model.
 
 
-
-
-
 ## Create segmentation masks
-The training data is stored as digitized polygons where each feature class is stored in the column named "class"
+The training data is stored as digitized polygons where each feature class is stored in the column named "classvalue". Note that only polygons overlapping a dem tile will be converted to a labeled tile. polygons outside of dem tiles are ignored.
 
-    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles/ /workspace/code/data/cultural_remains.shp classvalue /workspace/data/segmentation_masks/
+    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles_pits/ /workspace/data/remains_pits.shp Classvalue /workspace/data/segmentations_masks_pits/
 ## Create image chips
-
-Split tiles into smaller image chips.
+Each of the 2.5km x 2.5km dem tiles were Split into smaller image chips with the size 250 x 250 pixels. This corresponds to 125m x 125m in with a 0.5m DEM resolution.
 ```diff
 - Make sure the directory is empty/new so the split starts at 1 each time
 ```
 
     # Split hillshade
-    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/hillshade/ /workspace/data/split_data/hillshade/ --tile_size 250
+    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized_pits/hillshade/ /workspace/data/split_data_pits/hillshade/ --tile_size 250
 
-    # split slope
-    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/slope/ /workspace/data/split_data/slope/ --tile_size 250
+    # split elevation_above_pit
+    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized_pits/elevation_above_pit/ /workspace/data/split_data_pits/elevation_above_pit/ --tile_size 250
 
-    # split high pass median filter
-    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/hpmf/ /workspace/data/split_data/hpmf/ --tile_size 250
+    # Split Spherical Std Dev Of Normals
+    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized_pits/stdon/ /workspace/data/split_data_pits/stdon/ --tile_size 250
 
-    # Spherical Std Dev Of Normals
-    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/stdon/ /workspace/data/split_data/hpmf/ --tile_size 250
+    # Split minimal_curvature
+    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized_pits/minimal_curvature/ /workspace/data/split_data_pits/minimal_curvature/ --tile_size 250
+
+    # Split profile_curvature
+    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized_pits/profile_curvature/ /workspace/data/split_data_pits/profile_curvature/ --tile_size 250
 
     # Split labels
-    python /workspace/code/tools/split_training_data.py /workspace/data/segmentation_masks/ /workspace/data/split_data/labels/ --tile_size 250
+    python /workspace/code/tools/split_training_data.py /workspace/data/segmentation_masks_pits/ /workspace/data/split_data_pits/labels/ --tile_size 250
 
 **Remove chips without labels**
 image chips with less than four labeled pixels were removed. The reason for using four pixels is that the bounding box courdinates can not be identical. For this reason objects smaller than one square meter are excluded. 
 
-    python /workspace/code/tools/remove_unlabled_chips.py 4 /workspace/data/split_data/labels/ /workspace/data/split_data/hillshade/ /workspace/data/split_data/slope/ /workspace/data/split_data/hpmf/ /workspace/data/split_data/stdon/
+    python /workspace/code/tools/remove_unlabled_chips.py 4 /workspace/data/split_data_pits/labels/ /workspace/data/split_data_pits/hillshade/ /workspace/data/split_data_pits/elevation_above_pit/ /workspace/data/split_data_pits/stdon/ /workspace/data/split_data_pits/minimal_curvature/ /workspace/data/split_data_pits/profile_curvature/
 
 ## Inspect data
 
@@ -167,26 +167,29 @@ Segmentation masks of hunting pits, hillshade, local slope, high pass median fil
 
 **Use data split to move test data to new directories**
 
-
-    python /workspace/code/tools/partition_data.py /workspace/data/split_data/labels/ /workspace/data/test_data/labels/ /workspace/data/test_chips.csv
-
-    python /workspace/code/tools/partition_data.py /workspace/data/split_data/hillshade/ /workspace/data/test_data/hillshade/ /workspace/data/test_chips.csv
-
-    python /workspace/code/tools/partition_data.py /workspace/data/split_data/hpmf/ /workspace/data/test_data/hpmf/ /workspace/data/test_chips.csv
-    
-    python /workspace/code/tools/partition_data.py /workspace/data/split_data/slope/ /workspace/data/test_data/slope/ /workspace/data/test_chips.csv
-
-    python /workspace/code/tools/partition_data.py /workspace/data/split_data/stdon/ /workspace/data/test_data/stdon/ /workspace/data/test_chips.csv
 ## Train U-net
-This is an example on how to train the model with multiple topographical indices:
+This is an example on how to train the model on one topographical indice:
 
-    python /workspace/code/train_unet.py -I /workspace/data/split_data/hillshade/ -I /workspace/data/split_data/hpmf/ -I /workspace/data/split_data/slope/ -I /workspace/data/split_data/stdon/ /workspace/data/split_data/labels/ /workspace/data/logfiles/charcoal_hunting5/ --weighting="0.1,1,1" --seed=40 --epochs 100
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits6/ --weighting="0.005,1" --seed=40 --epochs 100
+
 ## Evaluate U-net
-    python /workspace/code/evaluate_unet.py -I /workspace/data/split_data/hillshade/ -I /workspace/data/split_data/hpmf/ -I /workspace/data/split_data/slope/ -I /workspace/data/split_data/stdon/ /workspace/data/split_data/labels/ /workspace/data/logfiles/charcoal_hunting5/trained.h5 /workspace/data/logfiles/charcoal_hunting5/eval.csv --selected_imgs=/workspace/data/logfiles/charcoal_hunting5/valid_imgs.txt --classes=0,1,2
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits6/trained.h5 /workspace/data/logfiles/pits/pits6/eval.csv --selected_imgs=/workspace/data/logfiles/pits/pits6/valid_imgs.txt --classes=0,1
+    
 ## Inference U-net
-    python /workspace/code/inference_unet.py -I /workspace/data/test_data/hillshade/ -I /workspace/data/test_data/hpmf/ -I /workspace/data/test_data/slope/ -I /workspace/data/test_data/stdon/ /workspace/data/logfiles/charcoal_hunting3/trained.h5 /workspace/data/inference_unet/
+    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/hillshade/0227.tif -I /workspace/data/test_data_pits/elevation_above_pit/0227.tif -I /workspace/data/test_data_pits/stdon/0227.tif -I /workspace/data/test_data_pits/minimal_curvature/0227.tif -I /workspace/data/test_data_pits/profile_curvature/0227.tif /workspace/data/logfiles/pits/pits6/trained.h5 /workspace/data/logfiles/pits/pits6/
+
+## Inference U-net on 2.5 km tile
+    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/topographical_indices_normalized_pits/hillshade/18D022_67450_5775_25.tif -I /workspace/data/topographical_indices_normalized_pits/elevation_above_pit/18D022_67450_5775_25.tif -I /workspace/data/topographical_indices_normalized_pits/stdon/18D022_67450_5775_25.tif -I /workspace/data/topographical_indices_normalized_pits/minimal_curvature/18D022_67450_5775_25.tif -I /workspace/data/topographical_indices_normalized_pits/profile_curvature/18D022_67450_5775_25.tif /workspace/data/logfiles/pits/pits6/trained.h5 /workspace/data/logfiles/pits/pits6/
+
 ## Post-processing U-net
-    python Y:/William/GitHub/Remnants-of-charcoal-kilns/post_processing.py D:/kolbottnar/inference/34_inference/ D:/kolbottnar/inference/34_post_processing/raw_polygons/ D:/kolbottnar/inference/34_post_processing/filtered_polygons/ --min_area=400 --min_ratio=-0.3
+The docker container dem:latest was used for post processing due to gdal being a pain to install. The gdal container is built from this [dockerfile](https://github.com/williamlidberg/Hydrologically-correct-DEM-from-LiDAR/blob/main/dockerfile)
+
+    docker run -it -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data dem:latest
+
+    python /workspace/code/semantic_segmentation/post_processing.py /workspace/data/logfiles/pits/pits4/ /workspace/data/post_processing/raw_polygons/ /workspace/data/post_processing/filtered_polygons/ --min_area=200 --min_ratio=-0.3
+
+
+
 # Object detection
 This section uses the docker container tagged "detection". the segmentation container is used for some steps since I have not figured out how to install gdal in the detection container.   
 

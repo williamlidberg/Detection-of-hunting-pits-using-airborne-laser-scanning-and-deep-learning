@@ -36,6 +36,7 @@ def main(laz_dir, dem_dir, resolution):
                 dem_img = laz_dir + f
                 dem_fill = dem_dir + f
                 fill_holes(dem_img, dem_fill)
+                os.remove(dem_img)
 
 if __name__== '__main__':
     parser = argparse.ArgumentParser(

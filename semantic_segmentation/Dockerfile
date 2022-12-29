@@ -1,11 +1,11 @@
-FROM nvcr.io/nvidia/tensorflow:20.12-tf2-py3
+FROM nvcr.io/nvidia/tensorflow:22.12-tf2-py3
 
 RUN echo "Custom container downloaded!"
 RUN apt-get -y update --fix-missing
 RUN apt-get -y install libopencv-highgui-dev ffmpeg libsm6 libxext6 software-properties-common
 RUN pip install --upgrade pip
 
-RUN pip install whitebox==2.0.3
+RUN pip install whitebox==2.2.0
 #RUN pip install pillow
 RUN pip install matplotlib==3.5.1 
 RUN pip install opencv-python==4.5.5.64 
@@ -34,3 +34,4 @@ RUN pip install GDAL
 RUN echo "Gdal installed!"
 
 RUN mkdir -p ~/workspace/temp
+1
