@@ -124,6 +124,8 @@ Each of the 2.5km x 2.5km dem tiles were Split into smaller image chips with the
 ```diff
 - Make sure the directory is empty/new so the split starts at 1 each time
 ```
+rm -r /mnt/Extension_100TB/William/Projects/Cultural_remains/data/split_data_pits/hillshade/
+mkdir /mnt/Extension_100TB/William/Projects/Cultural_remains/data/split_data_pits/hillshade/
 
     # Split hillshade
     python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized_pits/hillshade/ /workspace/data/split_data_pits/hillshade/ --tile_size 250
@@ -179,7 +181,7 @@ This is an example on how to train the model on one topographical indice:
     python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/hillshade/0227.tif -I /workspace/data/test_data_pits/elevation_above_pit/0227.tif -I /workspace/data/test_data_pits/stdon/0227.tif -I /workspace/data/test_data_pits/minimal_curvature/0227.tif -I /workspace/data/test_data_pits/profile_curvature/0227.tif /workspace/data/logfiles/pits/pits6/trained.h5 /workspace/data/logfiles/pits/pits6/
 
 ## Inference U-net on 2.5 km tile
-    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/topographical_indices_normalized_pits/hillshade/18D022_67450_5775_25.tif -I /workspace/data/topographical_indices_normalized_pits/elevation_above_pit/18D022_67450_5775_25.tif -I /workspace/data/topographical_indices_normalized_pits/stdon/18D022_67450_5775_25.tif -I /workspace/data/topographical_indices_normalized_pits/minimal_curvature/18D022_67450_5775_25.tif -I /workspace/data/topographical_indices_normalized_pits/profile_curvature/18D022_67450_5775_25.tif /workspace/data/logfiles/pits/pits6/trained.h5 /workspace/data/logfiles/pits/pits6/
+    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/topographical_indices_normalized_pits/hillshade/19F048_71025_7375_25.tif -I /workspace/data/topographical_indices_normalized_pits/elevation_above_pit/19F048_71025_7375_25.tif -I /workspace/data/topographical_indices_normalized_pits/stdon/19F048_71025_7375_25.tif -I /workspace/data/topographical_indices_normalized_pits/minimal_curvature/19F048_71025_7375_25.tif -I /workspace/data/topographical_indices_normalized_pits/profile_curvature/19F048_71025_7375_25.tif /workspace/data/logfiles/pits/pits7/trained.h5 /workspace/data/logfiles/pits/pits7/
 
 ## Post-processing U-net
 The docker container dem:latest was used for post processing due to gdal being a pain to install. The gdal container is built from this [dockerfile](https://github.com/williamlidberg/Hydrologically-correct-DEM-from-LiDAR/blob/main/dockerfile)
@@ -187,6 +189,14 @@ The docker container dem:latest was used for post processing due to gdal being a
     docker run -it -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data dem:latest
 
     python /workspace/code/semantic_segmentation/post_processing.py /workspace/data/logfiles/pits/pits4/ /workspace/data/post_processing/raw_polygons/ /workspace/data/post_processing/filtered_polygons/ /workspace/data/post_processing/final_prediction/ --min_area=9 --min_ratio=-0.5
+
+## Post-processing U-net 2.5km tile
+
+    docker run -it -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data dem:latest
+
+    python /workspace/code/semantic_segmentation/post_processing.py /workspace/data/test_data_pits/inference/ /workspace/data/post_processing/raw_polygons/ /workspace/data/post_processing/filtered_polygons/ /workspace/data/test_data_pits/inference_post_processed/ --min_area=9 --min_ratio=-0.5
+
+# evaluate on test tiles
 
 
 
