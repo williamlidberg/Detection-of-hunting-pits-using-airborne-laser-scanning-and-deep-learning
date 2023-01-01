@@ -55,17 +55,6 @@ class Topographical_indices:
         normed_profile_curvature = (img--2)/(1--2)
         utils.WriteGeotiff.write_gtiff(normed_profile_curvature, extent, normalized_profile_curvature, gdal.GDT_Float32)
 
-    # def high_pass_median_filter(self, input_path, normalized_hpmf, extent):
-    #     wbt.high_pass_median_filter(
-    #     i = input_path, 
-    #     output =  self.temp_dir + os.path.basename(input_path), 
-    #     filterx=11, 
-    #     filtery=11, 
-    #     sig_digits=2)
-    #     img = tifffile.imread(self.temp_dir + os.path.basename(input_path))
-    #     normed_hpmf = (img--1)/(2--1)
-    #     utils.WriteGeotiff.write_gtiff(normed_hpmf, extent, normalized_hpmf, gdal.GDT_Float32) 
-
     def spherical_std_dev_of_normals(self, input_path, normalized_stdon, extent):
         wbt.spherical_std_dev_of_normals(
         dem = input_path, 
@@ -75,13 +64,51 @@ class Topographical_indices:
         normed_stdon = img/30
         utils.WriteGeotiff.write_gtiff(normed_stdon, extent, normalized_stdon, gdal.GDT_Float32)  
 
+    def maxelevationdeviation(self, input_path, normalized_MED, extent):
+        wbt.max_elevation_deviation(
+            dem = input_path, 
+            out_mag = self.temp_dir + os.path.basename(input_path), 
+            out_scale= self.temp_dir + os.path.basename(input_path.replace('.tif', '_scale.tif')), 
+            min_scale=0, 
+            max_scale=10, 
+            step=1)
+        img = tifffile.imread(self.temp_dir + os.path.basename(input_path))
+        img[img > 10] = 10 # we are not interested in pits deeper than 2 m.
+        img[img < -10] = -10
+        normed_MED = (img--10)/(10--10)
+        utils.WriteGeotiff.write_gtiff(normed_MED, extent, normalized_MED, gdal.GDT_Float32)
+
+    def multiscaleelevationpercentile(self, input_path, normalized_MSEP, extent):
+        wbt.multiscale_elevation_percentile(
+            dem = input_path, 
+            out_mag = self.temp_dir + os.path.basename(input_path), 
+            out_scale= self.temp_dir + os.path.basename(input_path.replace('.tif', '_scale.tif')), 
+            sig_digits=3, 
+            min_scale=5, 
+            step=1, 
+            num_steps=10, 
+            step_nonlinearity=1.0)
+        img = tifffile.imread(self.temp_dir + os.path.basename(input_path))
+        normed_MSEP = img/100 # devide by 100 to change scale to 0-1.
+        utils.WriteGeotiff.write_gtiff(normed_MSEP, extent, normalized_MSEP, gdal.GDT_Float32)
+
+    def depthinsink(self, input_path, normalized_depthinsink, extent):
+        wbt.depth_in_sink(
+            dem = input_path, 
+            output = self.temp_dir + os.path.basename(input_path), 
+            zero_background=True)
+        img = tifffile.imread(self.temp_dir + os.path.basename(input_path))
+        img[img > 10] = 10 # we are not interested in pits deeper than 10 m anyway
+        normed_depthinsink = img/10 # devide by 10 to change scale to 0-1.
+        utils.WriteGeotiff.write_gtiff(normed_depthinsink, extent, normalized_depthinsink, gdal.GDT_Float32)
+
 def clean_temp(temp_dir):
     for root, dir, fs in os.walk(temp_dir):
         for f in fs:
             os.remove(os.path.join(root, f))
 
 
-def main(temp_dir, input_path, output_path_hillshade, output_path_elevation_above_pit, output_path_minimal_curvature,output_path_profile_curvature, output_path_stdon):
+def main(temp_dir, input_path, output_path_hillshade, output_path_elevation_above_pit, output_path_minimal_curvature,output_path_profile_curvature, output_path_stdon, output_maxelevationdeviation, output_multiscaleelevationpercentile, output_depthinsink):
 #    setup paths
     if not os.path.exists(input_path):
         raise ValueError('Input path does not exist: {}'.format(input_path))
@@ -99,7 +126,10 @@ def main(temp_dir, input_path, output_path_hillshade, output_path_elevation_abov
         minimal_curvature = os.path.join(output_path_minimal_curvature,'{}.{}'.format(img_name, 'tif'))
         profile_curvature = os.path.join(output_path_profile_curvature,'{}.{}'.format(img_name, 'tif'))
         spherical_std_dev_of_normals = os.path.join(output_path_stdon,'{}.{}'.format(img_name, 'tif'))
-        
+        maxelevationdeviation = os.path.join(output_maxelevationdeviation,'{}.{}'.format(img_name, 'tif')) 
+        multiscaleelevationpercentile = os.path.join(output_multiscaleelevationpercentile,'{}.{}'.format(img_name, 'tif')) 
+        depthinsink = os.path.join(output_depthinsink,'{}.{}'.format(img_name, 'tif')) 
+
         extent = gdal.Open(img_path) # extract projection and extent from input image
         topographical = Topographical_indices(temp_dir)
         clean_temp(temp_dir)
@@ -113,7 +143,14 @@ def main(temp_dir, input_path, output_path_hillshade, output_path_elevation_abov
         clean_temp(temp_dir)
         topographical.spherical_std_dev_of_normals(img_path, spherical_std_dev_of_normals, extent)
         clean_temp(temp_dir)
+        topographical.maxelevationdeviation(img_path, maxelevationdeviation, extent)
+        clean_temp(temp_dir)
+        topographical.multiscaleelevationpercentile(img_path, multiscaleelevationpercentile, extent)
+        clean_temp(temp_dir)
+        topographical.depthinsink(img_path, depthinsink, extent)
+        clean_temp(temp_dir)
 
+        
 if __name__ == '__main__':
     import argparse
 
@@ -128,5 +165,9 @@ if __name__ == '__main__':
     parser.add_argument('output_path_minimal_curvature', help = 'directory to store output_path_minimal_curvature images')
     parser.add_argument('output_path_profile_curvature', help = 'directory to store hpmf images')
     parser.add_argument('output_path_stdon', help='directory to store stdon images')
+    parser.add_argument('output_maxelevationdeviation', help = 'directory to store output_maxelevationdeviation images')
+    parser.add_argument('output_multiscaleelevationpercentile', help = 'directory to store output_multiscaleelevationpercentileimages')
+    parser.add_argument('output_depthinsink', help='directory to store output_depthinsink images')
     args = vars(parser.parse_args())
     main(**args)
+

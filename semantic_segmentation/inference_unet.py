@@ -174,7 +174,6 @@ def main(img_path, model_path, out_path, img_type, tile_size, margin,
                                        os.path.join(out_path,
                                                     '{}.{}'.format(img_name,
                                                                    img_type)))
-        #cv2.imwrite(os.path.join(out_path,'{}.{}'.format(img_name, img_type)), out)
 
 
 if __name__ == '__main__':

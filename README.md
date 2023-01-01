@@ -5,10 +5,11 @@
 
 
 # Cultural-remains
-## Detect cultural remains from LiDAR data
+## AIM
+The aim of this project is to evaluate methods to automatically detect trapping pits using remote sensing. Two machine learning methods will be tested on multiple topographical indices extracted from LiDAR data. 
 
 
-<img src="images/träd9.png" alt="Charcoal kiln" width="75%"/>
+<img src="images/träd9.png" alt="Charcoal kiln" width="50%"/>
 
 
 # Table of  Contents
@@ -40,6 +41,10 @@
 
 
 # Docker containers
+Docker containers will be used to manage all envrionments in this project. Different images were used for segmentation and object detection\
+**Segmentation:**
+
+**Object detection:**
 
 Navigate to respective dockerfile in the segmentation or object detection directories and build the containers
 
@@ -91,14 +96,16 @@ Finally use whitebox tools to create digital elevation models from the selected 
 Training a model directly on the digital elevation model is not practical since the values ranges from 0 to 2000 m. Instead different topographical indices were extracted from the DEM. The topographical data will be the same for both segmentation and object detection. All topographical indices are extracted using [Whitebox Tools](https://www.whiteboxgeo.com/manual/wbt_book/preface.html). The indices used are:  
 *   [Multidirectionl hillshade](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=multidirec#multidirectionalhillshade)
 *   [Elevation above pit](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=elevation%20above%20pit#elevabovepit)
-* [Min curvature](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=min%20curvature#minimalcurvature)
-* [Profile curvature](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=profile#profilecurvature)
-* [Standard deviations of normals](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=min%20curvature#SphericalStdDevOfNormals)
+*   [Min curvature](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=min%20curvature#minimalcurvature)
+*   [Profile curvature](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=profile#profilecurvature)
+*   [Standard deviations of normals](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=min%20curvature#SphericalStdDevOfNormals)
+*   [Max elevation Deviation](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=maxelevation#maxelevationdeviation)
+*   [Multiscale Elevation Percentile](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/geomorphometric_analysis.html?highlight=multiscale#multiscaleelevationpercentile)
+*   [Depth In Sink](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/hydrological_analysis.html?highlight=depth#depthinsink)
 
+This script extracts the topographical indices and normalizes them between 0 and 1. This step takes around 30 seconds / tile. It would take about 26 days for Sweden.
 
-This script extracts the topographical indices and normalizes them between 0 and 1.
-
-    python /workspace/code/Extract_topographcical_indices.py /workspace/temp/ /workspace/data/dem_tiles_pits/ /workspace/data/topographical_indices_normalized_pits/hillshade/ /workspace/data/topographical_indices_normalized_pits/elevation_above_pit/ /workspace/data/topographical_indices_normalized_pits/minimal_curvature/ /workspace/data/topographical_indices_normalized_pits/profile_curvature/ /workspace/data/topographical_indices_normalized_pits/stdon/
+    python /workspace/code/Extract_topographcical_indices.py /workspace/temp/ /workspace/data/dem_tiles_pits/ /workspace/data/topographical_indices_normalized_pits/hillshade/ /workspace/data/topographical_indices_normalized_pits/elevation_above_pit/ /workspace/data/topographical_indices_normalized_pits/minimal_curvature/ /workspace/data/topographical_indices_normalized_pits/profile_curvature/ /workspace/data/topographical_indices_normalized_pits/stdon/ /workspace/data/topographical_indices_normalized_pits/maxelevationdeviation/ /workspace/data/topographical_indices_normalized_pits/multiscaleelevationpercentile/ /workspace/data/topographical_indices_normalized_pits/depthinsink/
 
 <img src="images/distribution.PNG" alt="Distribution of normalized topographical indicies" width="50%"/>\
 Distribution of the normalised topographical indices from one tile.
@@ -118,45 +125,25 @@ The left image is a hunting pit (kids for scale) and the right image is the same
 ## Create segmentation masks
 The training data is stored as digitized polygons where each feature class is stored in the column named "classvalue". Note that only polygons overlapping a dem tile will be converted to a labeled tile. polygons outside of dem tiles are ignored.
 
-    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles_pits/ /workspace/data/remains_pits.shp Classvalue /workspace/data/segmentations_masks_pits/
+    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles_pits/ /workspace/data/remains_pits.shp Classvalue /workspace/data/segmentation_masks_pits/
+    
 ## Create image chips
 Each of the 2.5km x 2.5km dem tiles were Split into smaller image chips with the size 250 x 250 pixels. This corresponds to 125m x 125m in with a 0.5m DEM resolution.
 ```diff
 - Make sure the directory is empty/new so the split starts at 1 each time
 ```
-rm -r /mnt/Extension_100TB/William/Projects/Cultural_remains/data/split_data_pits/hillshade/
-mkdir /mnt/Extension_100TB/William/Projects/Cultural_remains/data/split_data_pits/hillshade/
+The bash script split_indices.sh will remove and create new directories and then run the splitting script on all indicies. Each 2.5 km x 2.5 km tile is split into image chips with the size 250 x 250 pixels.
 
-    # Split hillshade
-    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized_pits/hillshade/ /workspace/data/split_data_pits/hillshade/ --tile_size 250
 
-    # split elevation_above_pit
-    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized_pits/elevation_above_pit/ /workspace/data/split_data_pits/elevation_above_pit/ --tile_size 250
 
-    # Split Spherical Std Dev Of Normals
-    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized_pits/stdon/ /workspace/data/split_data_pits/stdon/ --tile_size 250
 
-    # Split minimal_curvature
-    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized_pits/minimal_curvature/ /workspace/data/split_data_pits/minimal_curvature/ --tile_size 250
-
-    # Split profile_curvature
-    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized_pits/profile_curvature/ /workspace/data/split_data_pits/profile_curvature/ --tile_size 250
-
-    # Split labels
-    python /workspace/code/tools/split_training_data.py /workspace/data/segmentation_masks_pits/ /workspace/data/split_data_pits/labels/ --tile_size 250
-
-**Remove chips without labels**
+**Remove chips without labels**\
 image chips with less than four labeled pixels were removed. The reason for using four pixels is that the bounding box courdinates can not be identical. For this reason objects smaller than one square meter are excluded. 
 
-    python /workspace/code/tools/remove_unlabled_chips.py 4 /workspace/data/split_data_pits/labels/ /workspace/data/split_data_pits/hillshade/ /workspace/data/split_data_pits/elevation_above_pit/ /workspace/data/split_data_pits/stdon/ /workspace/data/split_data_pits/minimal_curvature/ /workspace/data/split_data_pits/profile_curvature/
+    python /workspace/code/tools/remove_unlabled_chips.py 10 /workspace/data/split_data_pits/labels/ /workspace/data/split_data_pits/hillshade/ /workspace/data/split_data_pits/elevation_above_pit/ /workspace/data/split_data_pits/stdon/ /workspace/data/split_data_pits/minimal_curvature/ /workspace/data/split_data_pits/profile_curvature/ /workspace/data/split_data_pits/maxelevationdeviation/ /workspace/data/split_data_pits/multiscaleelevationpercentile/ /workspace/data/split_data_pits/depthinsink/
 
 ## Inspect data
-
-Segmentation masks of charcoal kilns, hillshade, local slope, high pass median filter and standard deviation of normals
-
-<img src="images/charcoal kilns.PNG" alt="Charcoal kilns" width="80%"/>
-
-Segmentation masks of hunting pits, hillshade, local slope, high pass median filter and standard deviation of normals
+Example of a chip from the training data. The first image is the label and the rest are examples of the topographical indices used.
 
 <img src="images/Hunting_pits.PNG" alt="Hunting pits" width="80%"/>
 
@@ -165,20 +152,20 @@ Segmentation masks of hunting pits, hillshade, local slope, high pass median fil
 ## Split data into training and testing data
 **Create data split**
 
-    python /workspace/code/tools/create_partition.py /workspace/data/split_data/labels/ /workspace/data/test_chips.csv
+    python /workspace/code/tools/create_partition.py /workspace/data/split_data_pits/labels/ /workspace/data/test_chips.csv
 
 **Use data split to move test data to new directories**
 
 ## Train U-net
-This is an example on how to train the model on one topographical indice:
+This is an example on how to train the model:
 
-    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits6/ --weighting="0.005,1" --seed=40 --epochs 100
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits8/ --weighting="0.01,1" --seed=40 --epochs 100
 
 ## Evaluate U-net
-    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits6/trained.h5 /workspace/data/logfiles/pits/pits6/eval.csv --selected_imgs=/workspace/data/logfiles/pits/pits6/valid_imgs.txt --classes=0,1
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits6/trained.h5 /workspace/data/logfiles/pits/pits6/eval.csv --selected_imgs=/workspace/data/logfiles/pits/pits6/valid_imgs.txt --classes=0,1
     
-## Inference U-net
-    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/hillshade/0227.tif -I /workspace/data/test_data_pits/elevation_above_pit/0227.tif -I /workspace/data/test_data_pits/stdon/0227.tif -I /workspace/data/test_data_pits/minimal_curvature/0227.tif -I /workspace/data/test_data_pits/profile_curvature/0227.tif /workspace/data/logfiles/pits/pits6/trained.h5 /workspace/data/logfiles/pits/pits6/
+## Inference U-net on test chips
+    python /workspace/code/semantic_segmentation/inference_unet.py python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/elevation_above_pit/ -I /workspace/data/test_data_pits/stdon/ -I /workspace/data/test_data_pits/minimal_curvature/ -I /workspace/data/test_data_pits/profile_curvature/ -I /workspace/data/test_data_pits/maxelevationdeviation/ -I /workspace/data/test_data_pits/multiscaleelevationpercentile/ -I /workspace/data/test_data_pits/depthinsink/ /workspace/data/logfiles/pits/pits8/trained.h5 /workspace/data/test_data_pits/inference/ /workspace/data/logfiles/pits/pits6/trained.h5 /workspace/data/logfiles/pits/pits6/
 
 ## Inference U-net on 2.5 km tile
     python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/topographical_indices_normalized_pits/hillshade/19F048_71025_7375_25.tif -I /workspace/data/topographical_indices_normalized_pits/elevation_above_pit/19F048_71025_7375_25.tif -I /workspace/data/topographical_indices_normalized_pits/stdon/19F048_71025_7375_25.tif -I /workspace/data/topographical_indices_normalized_pits/minimal_curvature/19F048_71025_7375_25.tif -I /workspace/data/topographical_indices_normalized_pits/profile_curvature/19F048_71025_7375_25.tif /workspace/data/logfiles/pits/pits7/trained.h5 /workspace/data/logfiles/pits/pits7/
@@ -196,7 +183,27 @@ The docker container dem:latest was used for post processing due to gdal being a
 
     python /workspace/code/semantic_segmentation/post_processing.py /workspace/data/test_data_pits/inference/ /workspace/data/post_processing/raw_polygons/ /workspace/data/post_processing/filtered_polygons/ /workspace/data/test_data_pits/inference_post_processed/ --min_area=9 --min_ratio=-0.5
 
-# evaluate on test tiles
+# Evaluate on test tiles
+Evaluate without post procssing
+
+    # raw
+    python /workspace/code/semantic_segmentation/evaluate_segmentation.py /workspace/data/test_data_pits/inference/ /workspace/data/test_data_pits/labels/ /workspace/data/logfiles/pits/pits7/test_pred.csv
+
+Evaluate after post processing
+
+    # post processed
+    python /workspace/code/semantic_segmentation/evaluate_segmentation.py /workspace/data/test_data_pits/inference/ /workspace/data/test_data_pits/labels/ /workspace/data/logfiles/pits/pits7/test_pred_postprocessed.csv
+
+
+
+
+
+
+
+
+
+
+
 
 
 

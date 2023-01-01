@@ -10,6 +10,7 @@ def raster_to_polygon(img_name, vector_polygons):
     wbt.raster_to_vector_polygons(
     i = img_name, 
     output = vector_polygons)
+    
 def polygon_to_raster(basefile, filtered_poygon, post_processed_prediction):
     wbt.vector_polygons_to_raster(
     i= filtered_poygon, 
