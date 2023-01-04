@@ -18,6 +18,13 @@ rm -r /mnt/Extension_100TB/William/Projects/Cultural_remains/data/test_data_pits
 mkdir /mnt/Extension_100TB/William/Projects/Cultural_remains/data/test_data_pits/multiscaleelevationpercentile
 rm -r /mnt/Extension_100TB/William/Projects/Cultural_remains/data/test_data_pits/depthinsink
 mkdir /mnt/Extension_100TB/William/Projects/Cultural_remains/data/test_data_pits/depthinsink
+rm -r /mnt/Extension_100TB/William/Projects/Cultural_remains/data/test_data_pits/maxelevationdeviation
+mkdir /mnt/Extension_100TB/William/Projects/Cultural_remains/data/test_data_pits/maxelevationdeviation
+rm -r /mnt/Extension_100TB/William/Projects/Cultural_remains/data/test_data_pits/multiscale_stdon
+mkdir /mnt/Extension_100TB/William/Projects/Cultural_remains/data/test_data_pits/multiscale_stdon
+rm -r /mnt/Extension_100TB/William/Projects/Cultural_remains/data/test_data_pits/maximal_curvature
+mkdir /mnt/Extension_100TB/William/Projects/Cultural_remains/data/test_data_pits/maximal_curvature
+
 
 echo "move test labels to new directories"
 docker run -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar segmentation:latest python /workspace/code/tools/partition_data.py /workspace/data/split_data_pits/labels/ /workspace/data/test_data_pits/labels/ /workspace/data/test_chips.csv
@@ -37,3 +44,7 @@ echo "move test multiscaleelevationpercentile to new directories"
 docker run -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar segmentation:latest python /workspace/code/tools/partition_data.py /workspace/data/split_data_pits/multiscaleelevationpercentile/ /workspace/data/test_data_pits/multiscaleelevationpercentile/ /workspace/data/test_chips.csv
 echo "move test depthinsink to new directories"
 docker run -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar segmentation:latest python /workspace/code/tools/partition_data.py /workspace/data/split_data_pits/depthinsink/ /workspace/data/test_data_pits/depthinsink/ /workspace/data/test_chips.csv
+echo "move test multiscale_stdon to new directories"
+docker run -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar segmentation:latest python /workspace/code/tools/partition_data.
+echo "move test maximal_curvature to new directories"
+docker run -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar segmentation:latest python /workspace/code/tools/partition_data.py /workspace/data/split_data_pits/maximal_curvature/ /workspace/data/test_data_pits/maximal_curvature/ /workspace/data/test_chips.csv
