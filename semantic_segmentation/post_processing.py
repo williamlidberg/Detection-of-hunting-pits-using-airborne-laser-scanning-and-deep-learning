@@ -15,8 +15,8 @@ def polygon_to_raster(basefile, filtered_poygon, post_processed_prediction):
     wbt.vector_polygons_to_raster(
     i= filtered_poygon, 
     output=post_processed_prediction, 
-    field="VALUE", 
-    nodata=True, 
+    field='FID', 
+    nodata=False, 
     cell_size=None, 
     base=basefile)
 
@@ -52,7 +52,15 @@ def delete_features(vector_polygons, min_area, min_ratio, vector_polygons_proces
     except:
         print(vector_polygons,'failed for some reason')
 
-def main(input_path, output_raw_polyons, output_polygons, output_predictions, min_area, min_ratio):
+def raster_to_binary(converted_preds, final_preds):
+    wbt.greater_than(
+        input1 = converted_preds, 
+        input2 = 1, 
+        output= final_preds, 
+        incl_equals=True
+    )
+
+def main(temp_dir, input_path, output_predictions, min_area, min_ratio):
     # setup paths
     if not os.path.exists(input_path):
         raise ValueError('Input path does not exist: {}'.format(input_path))
@@ -65,14 +73,16 @@ def main(input_path, output_raw_polyons, output_polygons, output_predictions, mi
     
     for img_path in imgs:
         img_name = os.path.basename(img_path).split('.')[0]        
-        vector_polygons =  os.path.join(output_raw_polyons,'{}.{}'.format(img_name, 'shp'))
-        vector_polygons_processed = os.path.join(output_polygons,'{}.{}'.format(img_name, 'shp'))
+        vector_polygons =  os.path.join(temp_dir,'{}.{}'.format((img_name + 'raw'), 'shp'))
+        vector_polygons_processed = os.path.join(temp_dir,'{}.{}'.format((img_name + 'filtered'), 'shp'))
+        vector_to_raster = os.path.join(temp_dir,'{}.{}'.format(img_name, 'tif'))
         post_processed_prediction = os.path.join(output_predictions,'{}.{}'.format(img_name, 'tif'))
         
         raster_to_polygon(img_path, vector_polygons)
         calculate_attributes(vector_polygons)
         delete_features(vector_polygons, min_area, min_ratio, vector_polygons_processed)
-        polygon_to_raster(img_path, vector_polygons_processed, post_processed_prediction)
+        polygon_to_raster(img_path, vector_polygons_processed, vector_to_raster)
+        raster_to_binary(vector_to_raster, post_processed_prediction)
 
 if __name__ == '__main__':
     import argparse
@@ -81,9 +91,8 @@ if __name__ == '__main__':
                        description='Extract topographical indicies '
                                    'image(s)',
                        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('temp_dir', help= 'path to a temperary directory')
     parser.add_argument('input_path', help='Path to dem or folder of dems')
-    parser.add_argument('output_raw_polyons', help = 'directory to store output polyons')
-    parser.add_argument('output_polygons', help='output processed polygons')
     parser.add_argument('output_predictions', help='output_predictions')
     parser.add_argument('--min_area', help= 'smallest detected polygon in square meters', type=int, default=20)
     parser.add_argument('--min_ratio', help= 'smallest perimiter area ratio', type=float, default=-0.3)

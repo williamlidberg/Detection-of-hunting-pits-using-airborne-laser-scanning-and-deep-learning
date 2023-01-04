@@ -165,11 +165,9 @@ class DataGenerator(tf.keras.utils.Sequence):
             # Create input image with containing all provided bands
             tmp = np.zeros(self.input_shape)
             for i, img_path in enumerate(img_paths):
-                # img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
                 img = tifffile.imread(img_path)
                 if self.augment:
                     img = self.apply_transform(img, flip, transform)
-                # img = img.astype(np.float32) / 255.
                 img = img.astype(np.float32)
                 tmp[:, :, i] = img
             X.append(tmp)
@@ -180,8 +178,8 @@ class DataGenerator(tf.keras.utils.Sequence):
                               gt.shape[1]).reshape((*gt.shape, self.class_num))
             # set ground truth band - sorting is done based on class order
             # first band is class with lowest number, second band second
-            # lowest, e.g., 0 - anything else, 1 - ditch, 2 - natural stream
-            # band order [anything else, ditch, natural stream]
+            # lowest, e.g., 0 - anything else, 1 - trapping pit
+            # band order [anything else, pit]
             for i, c in enumerate(self.classes):
                 gt_new[gt == c, i] = 1
             y.append(gt_new.reshape((-1, self.class_num)))

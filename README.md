@@ -116,7 +116,7 @@ Semantic segmentation uses masks where each pixel in the mask coresponds to a cl
 0. Background values
 1. Hunting pits
 
-
+    python /workspace/code/tools/count_labeled_pixels.py /workspace/data/segmentation_masks_pits/ 
 
 <img src="images/Hunting_kids.jpg" alt="Study area" width="75%"/>\
 The left image is a hunting pit (kids for scale) and the right image is the same hunting pit in the digital elevation model.
@@ -150,49 +150,107 @@ Example of a chip from the training data. The first image is the label and the r
 
 
 ## Split data into training and testing data
+The image chips were split into training data and testing data. 80% of the image chips were used for training the model and 20% were used for testing the model.
+
 **Create data split**
 
     python /workspace/code/tools/create_partition.py /workspace/data/split_data_pits/labels/ /workspace/data/test_chips.csv
 
 **Use data split to move test data to new directories**
+    The batch script partition_data.sh cleans the test data directories and moves the test chips to respective test directory using the split created above. Run it with ./partition_data.sh
 
 ## Train U-net
-This is an example on how to train the model:
+This is an example on how to train the model with all topographical indices:
 
-    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits8/ --weighting="0.01,1" --seed=40 --epochs 100
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits9/ --weighting="0.01,1" --seed=40 --epochs 100
+
+without depthinsink AND MULTISCALEELEVATIONPERCENTILE
+
+
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits1/ --weighting="0.01,1" --seed=40 --epochs 100 
+
+without MULTISCALEELEVATIONPERCENTILE batch size 16
+
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits14/ --weighting="0.01,1" --seed=40 --epochs 100 --batch_size=16
+
+without MULTISCALEELEVATIONPERCENTILE batch size 4 weights real
+
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits15/ --weighting="0.002,1" --seed=40 --epochs 100 --batch_size=4
+
 
 ## Evaluate U-net
-    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits6/trained.h5 /workspace/data/logfiles/pits/pits6/eval.csv --selected_imgs=/workspace/data/logfiles/pits/pits6/valid_imgs.txt --classes=0,1
-    
-## Inference U-net on test chips
-    python /workspace/code/semantic_segmentation/inference_unet.py python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/elevation_above_pit/ -I /workspace/data/test_data_pits/stdon/ -I /workspace/data/test_data_pits/minimal_curvature/ -I /workspace/data/test_data_pits/profile_curvature/ -I /workspace/data/test_data_pits/maxelevationdeviation/ -I /workspace/data/test_data_pits/multiscaleelevationpercentile/ -I /workspace/data/test_data_pits/depthinsink/ /workspace/data/logfiles/pits/pits8/trained.h5 /workspace/data/test_data_pits/inference/ /workspace/data/logfiles/pits/pits6/trained.h5 /workspace/data/logfiles/pits/pits6/
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits9/trained.h5 /workspace/data/logfiles/pits/pits11/eval.csv --selected_imgs=/workspace/data/logfiles/pits/pits11/valid_imgs.txt --classes=0,1
+ 
+EVAL WITHOUT DEPTINSINK AND MULTISCALEELEVATIONPERCENTILE
 
-## Inference U-net on 2.5 km tile
-    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/topographical_indices_normalized_pits/hillshade/19F048_71025_7375_25.tif -I /workspace/data/topographical_indices_normalized_pits/elevation_above_pit/19F048_71025_7375_25.tif -I /workspace/data/topographical_indices_normalized_pits/stdon/19F048_71025_7375_25.tif -I /workspace/data/topographical_indices_normalized_pits/minimal_curvature/19F048_71025_7375_25.tif -I /workspace/data/topographical_indices_normalized_pits/profile_curvature/19F048_71025_7375_25.tif /workspace/data/logfiles/pits/pits7/trained.h5 /workspace/data/logfiles/pits/pits7/
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/maxelevationdeviation/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits12/trained.h5 /workspace/data/logfiles/pits/pits12/eval.csv --selected_imgs=/workspace/data/logfiles/pits/pits12/valid_imgs.txt --classes=0,1
+
+without MULTISCALEELEVATIONPERCENTILE batch size 4 good
+
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits13/trained.h5 /workspace/data/logfiles/pits/pits13/eval.csv --selected_imgs=/workspace/data/logfiles/pits/pits13/valid_imgs.txt --classes=0,1
+
+without MULTISCALEELEVATIONPERCENTILE batch size 4 weights real
+
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits15/trained.h5 /workspace/data/logfiles/pits/pits15/eval.csv --selected_imgs=/workspace/data/logfiles/pits/pits15/valid_imgs.txt --classes=0,1
+
+
+## Inference U-net on test chips
+    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/hillshade/ -I /workspace/data/test_data_pits/elevation_above_pit/ -I /workspace/data/test_data_pits/stdon/ -I /workspace/data/test_data_pits/minimal_curvature/ -I /workspace/data/test_data_pits/profile_curvature/ -I /workspace/data/test_data_pits/maxelevationdeviation/ /workspace/data/logfiles/pits/pits12/trained.h5 /workspace/data/test_data_pits/inference/
+
+EVAL WITHOUT DEPTINSINK AND MULTISCALEELEVATIONPERCENTILE
+
+    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/hillshade/ -I /workspace/data/test_data_pits/elevation_above_pit/ -I /workspace/data/test_data_pits/stdon/ -I /workspace/data/test_data_pits/minimal_curvature/ -I /workspace/data/test_data_pits/profile_curvature/ -I /workspace/data/test_data_pits/maxelevationdeviation/ /workspace/data/logfiles/pits/pits12/trained.h5 /workspace/data/test_data_pits/inference/
+
+without MULTISCALEELEVATIONPERCENTILE batch size 16
+
+    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/hillshade/ -I /workspace/data/test_data_pits/elevation_above_pit/ -I /workspace/data/test_data_pits/stdon/ -I /workspace/data/test_data_pits/minimal_curvature/ -I /workspace/data/test_data_pits/profile_curvature/ -I /workspace/data/test_data_pits/maxelevationdeviation/ -I /workspace/data/test_data_pits/depthinsink/ /workspace/data/logfiles/pits/pits13/trained.h5 /workspace/data/test_data_pits/inference/
+
+without MULTISCALEELEVATIONPERCENTILE batch size 16 bad
+
+    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/hillshade/ -I /workspace/data/test_data_pits/elevation_above_pit/ -I /workspace/data/test_data_pits/stdon/ -I /workspace/data/test_data_pits/minimal_curvature/ -I /workspace/data/test_data_pits/profile_curvature/ -I /workspace/data/test_data_pits/maxelevationdeviation/ -I /workspace/data/test_data_pits/depthinsink/ /workspace/data/logfiles/pits/pits14/trained.h5 /workspace/data/test_data_pits/inference/
+
+
+without MULTISCALEELEVATIONPERCENTILE batch size 4 weights real
+
+    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/hillshade/ -I /workspace/data/test_data_pits/elevation_above_pit/ -I /workspace/data/test_data_pits/stdon/ -I /workspace/data/test_data_pits/minimal_curvature/ -I /workspace/data/test_data_pits/profile_curvature/ -I /workspace/data/test_data_pits/maxelevationdeviation/ -I /workspace/data/test_data_pits/depthinsink/ /workspace/data/logfiles/pits/pits15/trained.h5 /workspace/data/test_data_pits/inference/
 
 ## Post-processing U-net
-The docker container dem:latest was used for post processing due to gdal being a pain to install. The gdal container is built from this [dockerfile](https://github.com/williamlidberg/Hydrologically-correct-DEM-from-LiDAR/blob/main/dockerfile)
 
-    docker run -it -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data dem:latest
+    python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/test_data_pits/inference/ /workspace/data/test_data_pits/inference_post_processed/ --min_area=9 --min_ratio=-0.6
 
-    python /workspace/code/semantic_segmentation/post_processing.py /workspace/data/logfiles/pits/pits4/ /workspace/data/post_processing/raw_polygons/ /workspace/data/post_processing/filtered_polygons/ /workspace/data/post_processing/final_prediction/ --min_area=9 --min_ratio=-0.5
+
+
+# Evaluate on test tiles
+**Evaluate without post procssing**
+
+    # raw
+    python /workspace/code/semantic_segmentation/evaluate_segmentation.py /workspace/data/test_data_pits/inference/ /workspace/data/test_data_pits/labels/ /workspace/data/logfiles/pits/pits13/test_pred.csv
+
+**Evaluate after post processing**
+
+    # post processed
+    python /workspace/code/semantic_segmentation/evaluate_segmentation.py /workspace/data/test_data_pits/inference_post_processed/ /workspace/data/test_data_pits/labels/ /workspace/data/logfiles/pits/pits13/test_pred_postprocessed.csv
+
+
+
+
 
 ## Post-processing U-net 2.5km tile
 
-    docker run -it -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data dem:latest
 
     python /workspace/code/semantic_segmentation/post_processing.py /workspace/data/test_data_pits/inference/ /workspace/data/post_processing/raw_polygons/ /workspace/data/post_processing/filtered_polygons/ /workspace/data/test_data_pits/inference_post_processed/ --min_area=9 --min_ratio=-0.5
 
-# Evaluate on test tiles
-Evaluate without post procssing
 
-    # raw
-    python /workspace/code/semantic_segmentation/evaluate_segmentation.py /workspace/data/test_data_pits/inference/ /workspace/data/test_data_pits/labels/ /workspace/data/logfiles/pits/pits7/test_pred.csv
 
-Evaluate after post processing
 
-    # post processed
-    python /workspace/code/semantic_segmentation/evaluate_segmentation.py /workspace/data/test_data_pits/inference/ /workspace/data/test_data_pits/labels/ /workspace/data/logfiles/pits/pits7/test_pred_postprocessed.csv
+
+
+
+
+
+
+
+
 
 
 
