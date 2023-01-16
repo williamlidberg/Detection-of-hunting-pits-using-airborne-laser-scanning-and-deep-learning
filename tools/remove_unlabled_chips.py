@@ -2,7 +2,7 @@ import os
 from tifffile import tifffile
 import numpy as np
 
-def main(numpixels, label_path, image_path_1, image_path_2, image_path_3, image_path_4, image_path_5, image_path_6, image_path_7, image_path_8, image_path_9, image_path_10, image_path_11):
+def main(numpixels, label_path, image_path_1, image_path_2, image_path_3, image_path_4, image_path_5, image_path_6, image_path_7, image_path_8, image_path_9, image_path_10):
     for chip in os.listdir(label_path):
         if chip.endswith('.tif'):          
             labelwithpath = label_path + chip
@@ -16,7 +16,7 @@ def main(numpixels, label_path, image_path_1, image_path_2, image_path_3, image_
             imagewithpath_8 = image_path_8 + chip
             imagewithpath_9 = image_path_9 + chip
             imagewithpath_10 = image_path_10 + chip
-            imagewithpath_10 = image_path_11 + chip
+            #imagewithpath_10 = image_path_11 + chip
          
             image = tifffile.imread(labelwithpath)
             tilesum = np.sum(image)
@@ -32,8 +32,8 @@ def main(numpixels, label_path, image_path_1, image_path_2, image_path_3, image_
                 os.remove(imagewithpath_8)
                 os.remove(imagewithpath_9)
                 os.remove(imagewithpath_10)
-                os.remove(imagewithpath_11)
-                #print('removed ', chip, 'and all related images')
+                #os.remove(imagewithpath_11)
+                print('removed ', labelwithpath, 'and all related images')
 
 if __name__== '__main__':
     import argparse
@@ -52,7 +52,7 @@ if __name__== '__main__':
     parser.add_argument('image_path_8',help='dir of image path 3')
     parser.add_argument('image_path_9',help='dir of image path 3')
     parser.add_argument('image_path_10',help='dir of image path 3')
-    parser.add_argument('image_path_11',help='dir of image path 3')
+    #parser.add_argument('image_path_11',help='dir of image path 3')
 
 
     args = vars(parser.parse_args())

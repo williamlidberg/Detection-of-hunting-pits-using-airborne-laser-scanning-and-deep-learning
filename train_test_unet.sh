@@ -1,15 +1,65 @@
 #!/bin/bash 
-echo "train unet"
-docker run --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar segmentation:latest python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits8/ --weighting="0.01,1" --seed=40 --epochs 100
-echo "evaluate unet on eval data"
-docker run --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar segmentation:latest python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits8/trained.h5 /workspace/data/logfiles/pits/pits8/eval.csv --selected_imgs=/workspace/data/logfiles/pits/pits8/valid_imgs.txt --classes=0,1 
-echo "inference on test tile"
-docker run --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar segmentation:latest python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/hillshade/0227.tif -I /workspace/data/test_data_pits/elevation_above_pit/0227.tif -I /workspace/data/test_data_pits/stdon/0227.tif -I /workspace/data/test_data_pits/minimal_curvature/0227.tif -I /workspace/data/test_data_pits/profile_curvature/0227.tif /workspace/data/logfiles/pits/pits8/trained.h5 /workspace/data/logfiles/pits/pits8/
+echo "hillshade"
+mkdir /workspace/data/logfiles/pits/hillshade1/
+python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/hillshade1/ --weighting="0.01,1" --seed=40 --epochs 100 --batch_size=4
+python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/hillshade/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/hillshade1/trained.h5 /workspace/data/logfiles/pits/hillshade1/eval.csv --selected_imgs=/workspace/data/logfiles/pits/hillshade1/valid_imgs.txt --classes=0,1
 
-# echo "inference on test tile"
-# docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp segmentation:latest python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/hillshade -I /workspace/data/test_data_pits/elevation_above_pit/ -I /workspace/data/test_data_pits/stdon/ -I /workspace/data/test_data_pits/minimal_curvature/ -I /workspace/data/test_data_pits/profile_curvature/ /workspace/data/logfiles/pits/pits8/trained.h5 /workspace/data/test_data_pits/inference/
-# echo "evaluate test chips"
+echo "Maximum elevation deviation"
+mkdir /workspace/data/logfiles/pits/Maximum_elevation_deviation1/
+python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/maxelevationdeviation/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/Maximum_elevation_deviation1/ --weighting="0.01,1" --seed=40 --epochs 100 --batch_size=4
+python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/maxelevationdeviation/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/Maximum_elevation_deviation1/trained.h5 /workspace/data/logfiles/pits/Maximum_elevation_deviation1/eval.csv --selected_imgs=/workspace/data/logfiles/pits/Maximum_elevation_deviation1/valid_imgs.txt --classes=0,1
 
-# echo "post processing"
-# docker run -it -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp dem:latest python /workspace/code/semantic_segmentation/post_processing.py /workspace/data/test_data_pits/inference/ /workspace/data/post_processing/raw_polygons/ /workspace/data/post_processing/filtered_polygons/ /workspace/data/test_data_pits/inference_post_processed/ --min_area=9 --min_ratio=-0.5
-# echo "evaluate post processed test chips"
+echo "Multiscale elevation percentile"
+mkdir /workspace/data/logfiles/pits/Multiscale_elevation_percentile1/
+python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/Multiscale_elevation_percentile1/ --weighting="0.01,1" --seed=40 --epochs 100 --batch_size=4
+python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/Multiscale_elevation_percentile1/trained.h5 /workspace/data/logfiles/pits/Multiscale_elevation_percentile1/eval.csv --selected_imgs=/workspace/data/logfiles/pits/Multiscale_elevation_percentile1/valid_imgs.txt --classes=0,1
+
+echo "Minimal curvature"
+mkdir /workspace/data/logfiles/pits/Minimal_curvature1/
+python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/minimal_curvature/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/Minimal_curvature1/ --weighting="0.01,1" --seed=40 --epochs 100 --batch_size=4
+python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/minimal_curvature/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/Minimal_curvature1/trained.h5 /workspace/data/logfiles/pits/Minimal_curvature1/eval.csv --selected_imgs=/workspace/data/logfiles/pits/Minimal_curvature1/valid_imgs.txt --classes=0,1
+
+echo "Maximal curvature"
+mkdir /workspace/data/logfiles/pits/Maximal_curvature1/
+python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/maximal_curvature/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/Maximal_curvature1/ --weighting="0.01,1" --seed=40 --epochs 100 --batch_size=4
+python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/maximal_curvature/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/Maximal_curvature1/trained.h5 /workspace/data/logfiles/pits/Maximal_curvature1/eval.csv --selected_imgs=/workspace/data/logfiles/pits/Maximal_curvature1/valid_imgs.txt --classes=0,1
+
+echo "Profile curvature"
+mkdir /workspace/data/logfiles/pits/Profile_curvature1/
+python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/profile_curvature/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/Profile_curvature1/ --weighting="0.01,1" --seed=40 --epochs 100 --batch_size=4
+python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/profile_curvature/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/Profile_curvature1/trained.h5 /workspace/data/logfiles/pits/Profile_curvature1/eval.csv --selected_imgs=/workspace/data/logfiles/pits/Profile_curvature1/valid_imgs.txt --classes=0,1
+
+echo "Spherical standard deviation of normal"
+mkdir /workspace/data/logfiles/pits/Spherical_standard_deviation_of_normal1/
+python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/stdon/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/Spherical_standard_deviation_of_normal1/ --weighting="0.01,1" --seed=40 --epochs 100 --batch_size=4
+python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/stdon/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/Spherical_standard_deviation_of_normal1/trained.h5 /workspace/data/logfiles/pits/Spherical_standard_deviation_of_normal1/eval.csv --selected_imgs=/workspace/data/logfiles/pits/Spherical_standard_deviation_of_normal1/valid_imgs.txt --classes=0,1
+
+echo "Multiscale standard deviation of normal"
+mkdir /workspace/data/logfiles/pits/Multiscale_standard_deviation_of_normal1/
+python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/multiscale_stdon/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/Multiscale_standard_deviation_of_normal1/ --weighting="0.01,1" --seed=40 --epochs 100 --batch_size=4
+python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/multiscale_stdon/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/Multiscale_standard_deviation_of_normal1/trained.h5 /workspace/data/logfiles/pits/Multiscale_standard_deviation_of_normal1/eval.csv --selected_imgs=/workspace/data/logfiles/pits/Multiscale_standard_deviation_of_normal1/valid_imgs.txt --classes=0,1
+
+echo "Elevation above pit"
+mkdir /workspace/data/logfiles/pits/Elevation_above_pit1/
+python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/elevation_above_pit/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/Elevation_above_pit1/ --weighting="0.01,1" --seed=40 --epochs 100 --batch_size=4
+python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/elevation_above_pit/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/Elevation_above_pit1/trained.h5 /workspace/data/logfiles/pits/Elevation_above_pit1/eval.csv --selected_imgs=/workspace/data/logfiles/pits/Elevation_above_pit1/valid_imgs.txt --classes=0,1
+
+echo "depthinsink"
+mkdir /workspace/data/logfiles/pits/depthinsink1/
+python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/depthinsink1/ --weighting="0.01,1" --seed=40 --epochs 100 --batch_size=4
+python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/depthinsink1/trained.h5 /workspace/data/logfiles/pits/depthinsink1/eval.csv --selected_imgs=/workspace/data/logfiles/pits/depthinsink1/valid_imgs.txt --classes=0,1
+
+echo "everything combined"
+mkdir /workspace/data/logfiles/pits/combined1/
+python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/maximal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/multiscale_stdon/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/combined1/ --weighting="0.01,1" --seed=40 --epochs 100
+python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/maximal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/multiscale_stdon/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/combined1/trained.h5 /workspace/data/logfiles/pits/combined1/eval.csv --selected_imgs=/workspace/data/logfiles/pits/combined1/valid_imgs.txt --classes=0,1
+
+echo "combined above 0.4"
+mkdir /workspace/data/logfiles/pits/combined1/
+python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/combined1/ --weighting="0.01,1" --seed=40 --epochs 100
+python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/combined1/trained.h5 /workspace/data/logfiles/pits/combined1/eval.csv --selected_imgs=/workspace/data/logfiles/pits/combined1/valid_imgs.txt --classes=0,1
+
+echo "everything combined"
+mkdir /workspace/data/logfiles/pits/combined2/
+python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/maximal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/multiscale_stdon/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/combined2/ --weighting="0.01,1" --seed=40 --epochs 100
+python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/maximal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/multiscale_stdon/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/combined2/trained.h5 /workspace/data/logfiles/pits/combined2/eval.csv --selected_imgs=/workspace/data/logfiles/pits/combined1/valid_imgs.txt --classes=0,1

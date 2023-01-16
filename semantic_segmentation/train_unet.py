@@ -1,3 +1,5 @@
+import os
+
 import utils.generator
 import utils.unet
 import utils.loss
@@ -5,9 +7,6 @@ import utils.metric
 import tensorflow as tf
 import numpy as np
 import random
-
-import os
-
 
 def write_dataset(selected, log_path, name):
     with open(os.path.join(log_path, name), 'w') as f:
@@ -77,8 +76,8 @@ def main(img_path, gt_path, log_path, seed, epochs, depth, batch_size,
                        optimizer="adam",
                        # optimizer=tf.keras.optimizers.SGD(momentum=0.9),
                        # loss=jaccard_distance_loss,
-                       # loss='binary_crossentropy',
-                       loss='categorical_crossentropy',
+                       loss='binary_crossentropy',
+                       # loss='categorical_crossentropy',
                        sample_weight_mode="temporal",
                        # loss=utils.loss.cross_entropy,
                        metrics=metrics)

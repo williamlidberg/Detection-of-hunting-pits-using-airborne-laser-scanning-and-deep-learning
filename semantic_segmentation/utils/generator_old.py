@@ -1,8 +1,8 @@
-import os
-import numpy as np
-import tifffile
-import cv2
 import tensorflow as tf
+import cv2
+import numpy as np
+import os
+import tifffile
 
 
 class DataGenerator(tf.keras.utils.Sequence):
@@ -18,8 +18,7 @@ class DataGenerator(tf.keras.utils.Sequence):
                     images
         gt_path : Path to the folder with the groundtruth images - classes need
                   to be encoded by integers
-        classes : List of integer class labels to be found in groundtruth
-                  images
+        classes : List of integer class labels to be found in groundtruth images 
         batch_size : Batch size, optional
         augment : Apply augmentation, optional
         steps_per_epoch : Number of batches to produce per epoch, optional
@@ -44,93 +43,23 @@ class DataGenerator(tf.keras.utils.Sequence):
         self.augment = augment
         self.classes = classes
         self.class_num = len(classes)
+        self.class_weights = class_weights
         self.steps_per_epoch = steps_per_epoch
 
         # problem info
         self.paths = self.__read_paths(img_paths, gt_path)
         in_shpe = self.__get_problem_info(self.paths)
         self.input_shape = in_shpe
+        if self.class_weights is not None:
+            error = 'Mismatch between defined and infered class size:'
+            error += ' {} != {}'.format(len(self.class_weights), self.class_num)
+            assert len(self.class_weights) == self.class_num, error
 
         self.rng = np.random.default_rng(seed)
         self.selected = self.__select_imgs(self.paths, size, include, exclude,
                                            self.rng)
-        # set class weights
-        if class_weights == 'auto':
-            self.class_weights = self.__infer_kemker_weights()
-        elif class_weights == 'mfb':
-            self.class_weights = self.__infer_mfb_weights()
-        else:
-            self.class_weights = class_weights
-
-        if self.class_weights is not None:
-            error = 'Mismatch between defined and infered class size:'
-            error += ' {} != {}'.format(len(self.class_weights),
-                                        self.class_num)
-            assert len(self.class_weights) == self.class_num, error
-
-        print("Class weights set to: {}".format(self.class_weights))
 
         self.on_epoch_end()
-
-    def __infer_mfb_weights(self):
-        '''Calculate weights using median frequency balancing.
-           This approach has been proposed by Eigen and Fergus.
-           When there is an uneven number of classes, the weight for the class
-           with the median frequency is set to 1.0.
-           D. Eigen, and R. Fergus, "Predicting Depth, Surface Normals and
-           Semantic Labels With a Common Multi-Scale Convolutional
-           Architecture", 2015,
-        Returns
-        -------
-        list of class weights based on median frequency balancing
-        '''
-        weights = []
-        class_counts = {c: 0 for c in self.classes}
-        class_totals = {c: 0 for c in self.classes}
-
-        for idx in self.selected:
-            gt = tifffile.imread(self.paths[idx][1])
-            for c in self.classes:
-                class_counts[c] += np.sum(gt == c)
-                # only count the image if it contains at least one instance of
-                # the current class
-                if (gt == c).any():
-                    class_totals[c] += np.sum(gt)
-
-        frequencies = []
-        for cnt, tot in zip(class_counts, class_totals):
-            frequencies.append(cnt/tot)
-
-        weights = [np.median(frequencies) / freq for freq in frequencies]
-
-        return weights
-
-    def __infer_kemker_weights(self, mu=0.15):
-        '''Estimate class distribution and calculate weights based on it
-           Weights are calculated as proposed by Kemker et al.
-           R. Kemker, C. Salvaggio, and C. Kanan, "Algorithms for semantic
-           segmentation of multispectral remote sensing imagery using deep
-           learning", 2018
-        Parameters
-        ----------
-        mu : constant weighting factor
-        Returns
-        -------
-        list of class weights based on class distributions
-        '''
-        weights = []
-        class_distr = {c: 0 for c in self.classes}
-        for idx in self.selected:
-            gt = tifffile.imread(self.paths[idx][1])
-            for c in self.classes:
-                class_distr[c] += np.sum(gt == c)
-
-        total = np.sum(list(class_distr.values()))
-        for c in self.classes:
-            wc = mu * np.log10(total/class_distr[c])
-            weights.append(wc)
-
-        return weights
 
     def __get_problem_info(self, paths):
         '''Infer input shape from ground truth image
@@ -208,6 +137,7 @@ class DataGenerator(tf.keras.utils.Sequence):
         return self.__get_data(batch)
 
     def on_epoch_end(self):
+        print('New Epoch')
         self.index = self.selected.copy()
         self.rng.shuffle(self.index)
 
@@ -217,12 +147,13 @@ class DataGenerator(tf.keras.utils.Sequence):
         weights = []
 
         for img_paths, gt_path in batch:
+            # gt = cv2.imread(gt_path, cv2.IMREAD_GRAYSCALE)
             gt = tifffile.imread(gt_path)
 
             if self.augment:
                 transform = None
                 flip = None
-                #select = self.rng.integers(0, 2, 3)
+                # select = self.rng.integers(0, 2, 3)
                 select = self.rng.integers(0, 2, 2)
                 if select[0]:
                     flip = self.choose_flip_augmentation(self.rng)
@@ -247,8 +178,8 @@ class DataGenerator(tf.keras.utils.Sequence):
                               gt.shape[1]).reshape((*gt.shape, self.class_num))
             # set ground truth band - sorting is done based on class order
             # first band is class with lowest number, second band second
-            # lowest, e.g., 0 - anything else, 1 - ditch, 2 - natural stream
-            # band order [anything else, ditch, natural stream]
+            # lowest, e.g., 0 - anything else, 1 - trapping pit
+            # band order [anything else, pit]
             for i, c in enumerate(self.classes):
                 gt_new[gt == c, i] = 1
             y.append(gt_new.reshape((-1, self.class_num)))

@@ -110,7 +110,11 @@ This script extracts the topographical indices and normalizes them between 0 and
 
     python /workspace/code/Extract_topographcical_indices.py /workspace/temp/ /workspace/data/dem_tiles_pits/ /workspace/data/topographical_indices_normalized_pits/hillshade/ /workspace/data/topographical_indices_normalized_pits/maxelevationdeviation/ /workspace/data/topographical_indices_normalized_pits/multiscaleelevationpercentile/ /workspace/data/topographical_indices_normalized_pits/minimal_curvature/ /workspace/data/topographical_indices_normalized_pits/maximal_curvature/ /workspace/data/topographical_indices_normalized_pits/profile_curvature/ /workspace/data/topographical_indices_normalized_pits/stdon/ /workspace/data/topographical_indices_normalized_pits/multiscale_stdon/ /workspace/data/topographical_indices_normalized_pits/elevation_above_pit/ /workspace/data/topographical_indices_normalized_pits/depthinsink/
     
-    
+    real    105m27.086s
+    user    1293m36.302s
+    sys     89m0.528s
+
+
 <img src="images/distribution.PNG" alt="Distribution of normalized topographical indicies" width="50%"/>\
 Distribution of the normalised topographical indices from one tile.
 
@@ -136,38 +140,80 @@ Each of the 2.5km x 2.5km dem tiles were Split into smaller image chips with the
 ```diff
 - Make sure the directory is empty/new so the split starts at 1 each time
 ```
-The bash script split_indices.sh will remove and create new directories and then run the splitting script on all indicies. Each 2.5 km x 2.5 km tile is split into image chips with the size 250 x 250 pixels.
+The bash script ./code/split_indices.sh will remove and create new directories and then run the splitting script on all indicies. Each 2.5 km x 2.5 km tile is split into image chips with the size 250 x 250 pixels.
 
-
+    ./code/split_indices.sh
 
 
 **Remove chips without labels**\
-image chips with less than four labeled pixels were removed. The reason for using four pixels is that the bounding box courdinates can not be identical. For this reason objects smaller than one square meter are excluded. 
+image chips with less than four labeled pixels were removed. The minimum value is 4 pixels. The reason for using 4 pixels is that the bounding box courdinates can not be identical. For this reason objects smaller than one square meter have to be excluded. A larger threshold will remove along the boarder that are only partly on a chip. 
 
-    python /workspace/code/tools/remove_unlabled_chips.py 10 /workspace/data/split_data_pits/labels/ /workspace/data/split_data_pits/hillshade/ /workspace/data/split_data_pits/elevation_above_pit/ /workspace/data/split_data_pits/stdon/ /workspace/data/split_data_pits/minimal_curvature/ /workspace/data/split_data_pits/profile_curvature/ /workspace/data/split_data_pits/maxelevationdeviation/ /workspace/data/split_data_pits/multiscaleelevationpercentile/ /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/multiscale_stdon/ /workspace/data/split_data_pits/maximal_curvature/
-
-
-## Inspect data
-Example of a chip from the training data. The first image is the label and the rest are examples of the topographical indices used.
-
-<img src="images/Hunting_pits.PNG" alt="Hunting pits" width="80%"/>
+    python /workspace/code/tools/remove_unlabled_chips.py 4 /workspace/data/split_data_pits/labels/ /workspace/data/split_data_pits/hillshade/ /workspace/data/split_data_pits/elevation_above_pit/ /workspace/data/split_data_pits/stdon/ /workspace/data/split_data_pits/minimal_curvature/ /workspace/data/split_data_pits/profile_curvature/ /workspace/data/split_data_pits/maxelevationdeviation/ /workspace/data/split_data_pits/multiscaleelevationpercentile/ /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/multiscale_stdon/ /workspace/data/split_data_pits/maximal_curvature/
 
 
 
 ## Split data into training and testing data
 The image chips were split into training data and testing data. 80% of the image chips were used for training the model and 20% were used for testing the model.
 
-**Create data split**
+**Create data split and move test data to new directories**
+The batch script partition_data.sh cleans the test data directories and moves the test chips to respective test directory using the split created above. Run it with ./code/partition_data.sh 
+    
+    ./code/partition_data.sh
 
-    python /workspace/code/tools/create_partition.py /workspace/data/split_data_pits/labels/ /workspace/data/test_chips.csv
 
-**Use data split to move test data to new directories**
-    The batch script partition_data.sh cleans the test data directories and moves the test chips to respective test directory using the split created above. Run it with ./partition_data.sh
+# Train and evaluate Unet on individual indicies
 
-## Train U-net
+**Hillshade**
+run batchscript with ./code/train_test_unet.sh
+
+    mkdir /workspace/data/logfiles/pits/hillshade5/
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/hillshade5/ --weighting="0.01,1" --seed=40 --epochs 100 --batch_size=4
+
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/hillshade/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/hillshade5/trained.h5 /workspace/data/logfiles/pits/hillshade5/eval.csv --selected_imgs=/workspace/data/logfiles/pits/hillshade5/valid_imgs.txt --classes=0,1
+**Maximum elevation deviation**
+
+**Multiscale elevation percentile**
+
+**Minimal curvature**
+
+**Maximal curvature** 
+
+**Profile curvature**
+
+**Spherical standard deviation of normal**
+
+    mkdir /workspace/data/logfiles/pits/stdon1/
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/stdon/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/stdon1/ --weighting="0.01,1" --seed=40 --epochs 100 --batch_size=4
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/stdon/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/stdon1/trained.h5 /workspace/data/logfiles/pits/stdon1/eval.csv --selected_imgs=/workspace/data/logfiles/pits/stdon1/valid_imgs.txt --classes=0,1
+
+**Multiscale standard deviation of normal**
+
+**Elevation above pit**
+
+    mkdir /workspace/data/logfiles/pits/elevation_above_pit1/
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/elevation_above_pit/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/elevation_above_pit1/ --weighting="0.01,1" --seed=40 --epochs 100 --batch_size=4
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/elevation_above_pit/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/elevation_above_pit1/trained.h5 /workspace/data/logfiles/pits/elevation_above_pit1/eval.csv --selected_imgs=/workspace/data/logfiles/pits/elevation_above_pit1/valid_imgs.txt --classes=0,1
+
+
+**Depth in sink**
+
+
+# Train U-net on multiple indicies
 This is an example on how to train the model with all topographical indices:
 
-    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/pits9/ --weighting="0.01,1" --seed=40 --epochs 100
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/maximal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/multiscale_stdon/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/everything1/ --weighting="0.01,1" --seed=40 --epochs 100
+
+    evaluate
+
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/maximal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/multiscale_stdon/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/everything1/trained.h5 /workspace/data/logfiles/pits/everything1/eval.csv --selected_imgs=/workspace/data/logfiles/pits/everything1/valid_imgs.txt --classes=0,1
+    
+
+
+
+
+
+
+
 
 without depthinsink AND MULTISCALEELEVATIONPERCENTILE
 
@@ -200,7 +246,7 @@ without MULTISCALEELEVATIONPERCENTILE batch size 4 weights real
 
 
 ## Inference U-net on test chips
-    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/hillshade/ -I /workspace/data/test_data_pits/elevation_above_pit/ -I /workspace/data/test_data_pits/stdon/ -I /workspace/data/test_data_pits/minimal_curvature/ -I /workspace/data/test_data_pits/profile_curvature/ -I /workspace/data/test_data_pits/maxelevationdeviation/ /workspace/data/logfiles/pits/pits12/trained.h5 /workspace/data/test_data_pits/inference/
+    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/hillshade/ -I /workspace/data/test_data_pits/maxelevationdeviation/ -I /workspace/data/test_data_pits/multiscaleelevationpercentile/ -I /workspace/data/test_data_pits/minimal_curvature/ -I /workspace/data/test_data_pits/maximal_curvature/ -I /workspace/data/test_data_pits/profile_curvature/ -I /workspace/data/test_data_pits/stdon/ -I /workspace/data/test_data_pits/multiscale_stdon/ -I /workspace/data/test_data_pits/elevation_above_pit/ -I /workspace/data/test_data_pits/depthinsink/ /workspace/data/logfiles/pits/everything1/trained.h5 /workspace/data/test_data_pits/inference/
 
 EVAL WITHOUT DEPTINSINK AND MULTISCALEELEVATIONPERCENTILE
 
