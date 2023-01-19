@@ -25,7 +25,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(
-                       description='Randomly samples 20 percent of the data to be used as test data. The sampled filenames are stored in a csv',
+                       description='counts the number of pixels labaled as 1.',
                        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('input_path', help='path to directory of labels')
 

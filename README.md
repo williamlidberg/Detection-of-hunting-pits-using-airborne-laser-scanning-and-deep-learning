@@ -61,13 +61,6 @@ You can run the container in the background with screen
 
 
 
-**Start the notebook:**
-
-    jupyter notebook --ip=0.0.0.0 --no-browser --allow-root
-
-Copy the notebook link and then detach the screen environment with:
-
-    ctlr + a + d
 
 # Training data
 The training data were collected from multiple sources. Historical forest maps from local archives where digitized and georeferenced. Open data from the [swedish national heritage board were downloaded and digitized](https://pub.raa.se/). All remains where referenced with the liDAR data in order to match the reported remain to the LiDAR data. In total x hunting pits where manually digitized and corrected this way.
@@ -86,11 +79,14 @@ Then Create a shapefile tile index of all laz tiles in the pooled directory
 
 Use the shapefile tile index and a shapefile of all field data to create a polygon that can be used to select and copy relevant laz tilesto a new directory
 
-    python /workspace/code/tools/copy_laz_tiles.py /workspace/data/footprint.shp /workspace/data/remains_pits.shp /workspace/lidar/pooled_laz_files/ /workspace/data/selected_lidar_tiles_pits/
+    python /workspace/code/tools/copy_laz_tiles.py /workspace/data/footprint.shp /workspace/code/Hunting_pits_covered_by_lidar.shp /workspace/lidar/pooled_laz_files/ /workspace/data/selected_lidar_tiles_pits/
 
 Finally use whitebox tools to create digital elevation models from the selected lidar data
-
+**Training and testing areas**
     python /workspace/code/tools/laz_to_dem.py /workspace/data/selected_lidar_tiles_pits/ /workspace/data/dem_tiles_pits/ 0.5
+
+
+
 
 ## Extract and normalize topographical indices
 Training a model directly on the digital elevation model is not practical since the values ranges from 0 to 2000 m. Instead different topographical indices were extracted from the DEM. The topographical data will be the same for both segmentation and object detection. All topographical indices are extracted using [Whitebox Tools](https://www.whiteboxgeo.com/manual/wbt_book/preface.html). The indices used are:  
@@ -150,7 +146,10 @@ image chips with less than four labeled pixels were removed. The minimum value i
 
     python /workspace/code/tools/remove_unlabled_chips.py 4 /workspace/data/split_data_pits/labels/ /workspace/data/split_data_pits/hillshade/ /workspace/data/split_data_pits/elevation_above_pit/ /workspace/data/split_data_pits/stdon/ /workspace/data/split_data_pits/minimal_curvature/ /workspace/data/split_data_pits/profile_curvature/ /workspace/data/split_data_pits/maxelevationdeviation/ /workspace/data/split_data_pits/multiscaleelevationpercentile/ /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/multiscale_stdon/ /workspace/data/split_data_pits/maximal_curvature/
 
+**count labeled pixels**
+    python /workspace/code/tools/count_labeled_pixels.py /workspace/data/split_data_pits/labels/
 
+1.16 % of all pixles in the chips are labaled as hunting pits. Try to use this to set weights to 0.16 
 
 ## Split data into training and testing data
 The image chips were split into training data and testing data. 80% of the image chips were used for training the model and 20% were used for testing the model.
@@ -203,14 +202,17 @@ This is an example on how to train the model with all topographical indices:
 
     python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/maximal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/multiscale_stdon/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/everything1/ --weighting="0.01,1" --seed=40 --epochs 100
 
-    evaluate
+Evaluate
 
     python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/maximal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/multiscale_stdon/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/everything1/trained.h5 /workspace/data/logfiles/pits/everything1/eval.csv --selected_imgs=/workspace/data/logfiles/pits/everything1/valid_imgs.txt --classes=0,1
     
+Train using weights based on real distribution (0.016)
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/maximal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/multiscale_stdon/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/everything2/ --weighting="0.016,1" --seed=40 --epochs 100
 
 
+Evaluate 2
 
-
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/hillshade/ -I /workspace/data/split_data_pits/maxelevationdeviation/ -I /workspace/data/split_data_pits/multiscaleelevationpercentile/ -I /workspace/data/split_data_pits/minimal_curvature/ -I /workspace/data/split_data_pits/maximal_curvature/ -I /workspace/data/split_data_pits/profile_curvature/ -I /workspace/data/split_data_pits/stdon/ -I /workspace/data/split_data_pits/multiscale_stdon/ -I /workspace/data/split_data_pits/elevation_above_pit/ -I /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/everything2/trained.h5 /workspace/data/logfiles/pits/everything2/eval.csv --selected_imgs=/workspace/data/logfiles/pits/everything2/valid_imgs.txt --classes=0,1
 
 
 
@@ -280,7 +282,7 @@ without MULTISCALEELEVATIONPERCENTILE batch size 4 weights real
 **Evaluate after post processing**
 
     # post processed
-    python /workspace/code/semantic_segmentation/evaluate_segmentation.py /workspace/data/test_data_pits/inference_post_processed/ /workspace/data/test_data_pits/labels/ /workspace/data/logfiles/pits/pits13/test_pred_postprocessed.csv
+    python /workspace/code/semantic_segmentation/evaluate_segmentation.py /workspace/data/test_data_pits/inference_post_processed/ /workspace/data/test_data_pits/labels/ /workspace/data/logfiles/pits/everything1/test_pred_postprocessed.csv
 
 
 
@@ -294,6 +296,19 @@ without MULTISCALEELEVATIONPERCENTILE batch size 4 weights real
 
 
 
+**Demo area**
+Extrat dems
+    python /workspace/code/tools/laz_to_dem.py /workspace/data/demo_area/tiles/ /workspace/data/demo_area/dem_tiles/ 0.5
+
+Calculate topoindicies
+
+    python /workspace/code/Extract_topographcical_indices.py /workspace/temp/ /workspace/data/demo_area/dem_tiles/ /workspace/data/demo_area/topographical_indicies/hillshade/ /workspace/data/demo_area/topographical_indicies/maxelevationdeviation/ /workspace/data/demo_area/topographical_indicies/multiscaleelevationpercentile/ /workspace/data/demo_area/topographical_indicies/minimal_curvature/ /workspace/data/demo_area/topographical_indicies/maximal_curvature/ /workspace/data/demo_area/topographical_indicies/profile_curvature/ /workspace/data/demo_area/topographical_indicies/stdon/ /workspace/data/demo_area/topographical_indicies/multiscale_stdon/ /workspace/data/demo_area/topographical_indicies/elevation_above_pit/ /workspace/data/demo_area/topographical_indicies/depthinsink/
+
+Inference
+    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies/hillshade/ -I /workspace/data/demo_area/topographical_indicies/maxelevationdeviation/ -I /workspace/data/demo_area/topographical_indicies/multiscaleelevationpercentile/ -I /workspace/data/demo_area/topographical_indicies/minimal_curvature/ -I /workspace/data/demo_area/topographical_indicies/maximal_curvature/ -I /workspace/data/demo_area/topographical_indicies/profile_curvature/ -I /workspace/data/demo_area/topographical_indicies/stdon/ -I /workspace/data/demo_area/topographical_indicies/multiscale_stdon/ -I /workspace/data/demo_area/topographical_indicies/elevation_above_pit/ -I /workspace/data/demo_area/topographical_indicies/depthinsink/ /workspace/data/logfiles/pits/everything1/trained.h5 /workspace/data/demo_area/topographical_indicies/inference/
+
+post processing
+    python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/demo_area/topographical_indicies/inference/ /workspace/data/demo_area/topographical_indicies/inference_post_processed/ polygon --min_area=9 --min_ratio=-0.6
 
 
 
@@ -303,6 +318,13 @@ without MULTISCALEELEVATIONPERCENTILE batch size 4 weights real
 
 
 
+**Start the notebook:**
+
+    jupyter notebook --ip=0.0.0.0 --no-browser --allow-root
+
+Copy the notebook link and then detach the screen environment with:
+
+    ctlr + a + d
 
 
 

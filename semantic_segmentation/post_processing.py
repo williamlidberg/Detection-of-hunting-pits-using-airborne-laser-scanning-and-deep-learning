@@ -1,5 +1,6 @@
 import os
 import argparse
+import shutil
 import whitebox
 wbt = whitebox.WhiteboxTools()
 from osgeo import ogr
@@ -60,7 +61,7 @@ def raster_to_binary(converted_preds, final_preds):
         incl_equals=True
     )
 
-def main(temp_dir, input_path, output_predictions, min_area, min_ratio):
+def main(temp_dir, input_path, output_type, output_predictions, min_area, min_ratio):
     # setup paths
     if not os.path.exists(input_path):
         raise ValueError('Input path does not exist: {}'.format(input_path))
@@ -77,12 +78,18 @@ def main(temp_dir, input_path, output_predictions, min_area, min_ratio):
         vector_polygons_processed = os.path.join(temp_dir,'{}.{}'.format((img_name + 'filtered'), 'shp'))
         vector_to_raster = os.path.join(temp_dir,'{}.{}'.format(img_name, 'tif'))
         post_processed_prediction = os.path.join(output_predictions,'{}.{}'.format(img_name, 'tif'))
+        post_processed_prediction_polygon = os.path.join(output_predictions,'{}.{}'.format((img_name + 'filtered'), 'shp'))
         
         raster_to_polygon(img_path, vector_polygons)
         calculate_attributes(vector_polygons)
-        delete_features(vector_polygons, min_area, min_ratio, vector_polygons_processed)
-        polygon_to_raster(img_path, vector_polygons_processed, vector_to_raster)
-        raster_to_binary(vector_to_raster, post_processed_prediction)
+        if output_type == 'polygon':
+            delete_features(vector_polygons, min_area, min_ratio, post_processed_prediction_polygon)
+        elif output_type == 'raster':
+            delete_features(vector_polygons, min_area, min_ratio, vector_polygons_processed)
+            polygon_to_raster(img_path, vector_polygons_processed, vector_to_raster)
+            raster_to_binary(vector_to_raster, post_processed_prediction)
+
+        
 
 if __name__ == '__main__':
     import argparse
@@ -94,6 +101,7 @@ if __name__ == '__main__':
     parser.add_argument('temp_dir', help= 'path to a temperary directory')
     parser.add_argument('input_path', help='Path to dem or folder of dems')
     parser.add_argument('output_predictions', help='output_predictions')
+    parser.add_argument('output_type', default='raster',help='output polygon or raster')
     parser.add_argument('--min_area', help= 'smallest detected polygon in square meters', type=int, default=20)
     parser.add_argument('--min_ratio', help= 'smallest perimiter area ratio', type=float, default=-0.3)
     args = vars(parser.parse_args())
