@@ -49,14 +49,13 @@ Docker containers will be used to manage all envrionments in this project. Diffe
 Navigate to respective dockerfile in the segmentation or object detection directories and build the containers
 
     docker build -t segmentation .
-    docker build -t detection .
     docker build -t detection https://github.com/williamlidberg/Cultural-remains.git#main:object_detection
 
 You can run the container in the background with screen
 
     screen -S segmentation
 
-    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar segmentation:latest
+    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar segmentation:latest
 
 
 
@@ -79,7 +78,7 @@ Then Create a shapefile tile index of all laz tiles in the pooled directory
 
 Use the shapefile tile index and a shapefile of all field data to create a polygon that can be used to select and copy relevant laz tilesto a new directory
 
-    python /workspace/code/tools/copy_laz_tiles.py /workspace/data/footprint.shp /workspace/code/Hunting_pits_covered_by_lidar.shp /workspace/lidar/pooled_laz_files/ /workspace/data/selected_lidar_tiles_pits/
+    python /workspace/code/tools/copy_laz_tiles.py /workspace/data/footprint.shp /workspace/code/data/Hunting_pits_covered_by_lidar.shp /workspace/lidar/pooled_laz_files/ /workspace/data/selected_lidar_tiles_pits/
 
 Finally use whitebox tools to create digital elevation models from the selected lidar data
 **Training and testing areas**
@@ -120,7 +119,7 @@ Semantic segmentation uses masks where each pixel in the mask coresponds to a cl
 0. Background values
 1. Hunting pits
 
-    python /workspace/code/tools/count_labeled_pixels.py /workspace/data/segmentation_masks_pits/ 
+    
 
 <img src="images/Hunting_kids.jpg" alt="Study area" width="75%"/>\
 The left image is a hunting pit (kids for scale) and the right image is the same hunting pit in the digital elevation model.
@@ -129,30 +128,59 @@ The left image is a hunting pit (kids for scale) and the right image is the same
 ## Create segmentation masks
 The training data is stored as digitized polygons where each feature class is stored in the column named "classvalue". Note that only polygons overlapping a dem tile will be converted to a labeled tile. polygons outside of dem tiles are ignored.
 
-    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles_pits/ /workspace/data/remains_pits.shp Classvalue /workspace/data/segmentation_masks_pits/
+    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles_pits/ /workspace/code/data/Hunting_pits_covered_by_lidar.shp Classvalue /workspace/data/segmentation_masks_pits/
     
 ## Create image chips
-Each of the 2.5km x 2.5km dem tiles were Split into smaller image chips with the size 250 x 250 pixels. This corresponds to 125m x 125m in with a 0.5m DEM resolution.
+Each of the 2.5km x 2.5km dem tiles were Split into smaller image chips with the size 256 x 256 pixels. This corresponds to 125m x 125m in with a 0.5m DEM resolution.
 ```diff
 - Make sure the directory is empty/new so the split starts at 1 each time
 ```
-The bash script ./code/split_indices.sh will remove and create new directories and then run the splitting script on all indicies. Each 2.5 km x 2.5 km tile is split into image chips with the size 250 x 250 pixels.
+The bash script ./code/split_indices.sh will remove and create new directories and then run the splitting script on all indicies. Each 2.5 km x 2.5 km tile is split into image chips with the size 256 x 256 pixels.
 
     ./code/split_indices.sh
 
 
-**Remove chips without labels**\
-image chips with less than four labeled pixels were removed. The minimum value is 4 pixels. The reason for using 4 pixels is that the bounding box courdinates can not be identical. For this reason objects smaller than one square meter have to be excluded. A larger threshold will remove along the boarder that are only partly on a chip. 
 
-    python /workspace/code/tools/remove_unlabled_chips.py 4 /workspace/data/split_data_pits/labels/ /workspace/data/split_data_pits/hillshade/ /workspace/data/split_data_pits/elevation_above_pit/ /workspace/data/split_data_pits/stdon/ /workspace/data/split_data_pits/minimal_curvature/ /workspace/data/split_data_pits/profile_curvature/ /workspace/data/split_data_pits/maxelevationdeviation/ /workspace/data/split_data_pits/multiscaleelevationpercentile/ /workspace/data/split_data_pits/depthinsink/ /workspace/data/split_data_pits/multiscale_stdon/ /workspace/data/split_data_pits/maximal_curvature/
 
-**count labeled pixels**
-    python /workspace/code/tools/count_labeled_pixels.py /workspace/data/split_data_pits/labels/
+## Create bounding boxes
+Bounding boxes can be created from segmentation masks if each object has a uniqe ID. A different column in the shapefile was used to achive this : object_id. Run the "create_segmentation_mask.py script on this column.
 
-1.16 % of all pixles in the chips are labaled as hunting pits. Try to use this to set weights to 0.16 
+**Create new segmentation masks with uniqe ID**
+    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles_pits/ /workspace/code/data/Hunting_pits_covered_by_lidar.shp object_id /workspace/data/object_detection/segmentation_masks/hunting_pits/
 
-## Split data into training and testing data
-The image chips were split into training data and testing data. 80% of the image chips were used for training the model and 20% were used for testing the model.
+**Split segmentation masks into chips**
+    python /workspace/code/tools/split_training_data.py /workspace/data/object_detection/segmentation_masks/hunting_pits/ /workspace/data/object_detection/split_segmentations_masks/ --tile_size 256
+
+**Convert selected segmentation masks to bounding boxes**
+Use the object detection docker image to create bounding boxes. copy relevant tiles first?
+
+    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar detection:latest
+
+    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/split_segmentations_masks/ 256 1 /workspace/data/split_data_pits_labaled/bounding_boxes/
+
+Due to the mirroring of chips when splitting tiles I ended up with some strange examples where the bounding box streches over both mirrored pits. These chips were moved to:Y:\William\Projects\Cultural_remains\data\object_detection\strange_boxes. Copy correct labeled chips to new directories
+
+    python /workspace/code/tools/delete_misslabeled_chips.py /workspace/data/final_data/all /workspace/data/object_detection/strange_boxes/
+
+copy matching bounding boxes to final directory:
+    import os
+    import shutil
+
+    labels = 'Y:/William/Projects/Cultural_remains/data/final_data/all/labels/'
+    boxes = 'Y:/William/Projects/Cultural_remains/data/split_data_pits_labaled/bounding_boxes/'
+    copy_boxes = 'Y:/William/Projects/Cultural_remains/data/final_data/all/bounding_boxes/'
+    for file in os.listdir(labels):
+    inbox = boxes + file.replace('.tif', '.txt')
+    outbox = copy_boxes + file.replace('.tif', '.txt')
+    shutil.copy(inbox, outbox)
+
+The following chips are missing and have to be removed from te final data.
+22135.tif
+63165.tif
+63166.tif
+78220.tif
+
+python /workspace/code/tools/delete_misslabeled_chips.py /workspace/data/final_data/all /workspace/data/object_detection/strange_tiles/
 
 **Create data split and move test data to new directories**
 The batch script partition_data.sh cleans the test data directories and moves the test chips to respective test directory using the split created above. Run it with ./code/partition_data.sh 
@@ -160,13 +188,52 @@ The batch script partition_data.sh cleans the test data directories and moves th
     ./code/partition_data.sh
 
 
+
+**Partition training data**\
+ The data is split into training data, testing data and validation data. The traning data will be used to train the model and validation data will be used to experiment while the testing data is held for the final results. The datasplit was already done during the segmentation and will be reused for the object detection.
+
+
+        ./code/partition_data.sh
+
+
+**Select training chips to match segmentation chips**
+    python /workspace/code/object_detection/select_chips_with_labels.py /workspace/data/split_data_pits/labels/ /workspace/data/object_detection/split_segmentations_masks/ /workspace/data/object_detection/selected_detection_masks_for_training/
+
+**Select testing chips to match segmentation chips**
+    python /workspace/code/object_detection/select_chips_with_labels.py /workspace/data/test_data_pits/labels/ /workspace/data/object_detection/split_segmentations_masks/ /workspace/data/object_detection/selected_detection_masks_for_testing/
+
+**Convert selected segmentation masks to bounding boxes**
+Use the object detection docker image to create bounding boxes
+
+    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar detection:latest
+**training chips**
+
+    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/selected_detection_masks_for_training/ 256 1 /workspace/data/split_data_pits/bounding_boxes/
+
+**testing chips**
+
+    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/selected_detection_masks_for_testing/ 256 1 /workspace/data/test_data_pits/bounding_boxes/
+
+
+These training tiles had pits on the edges and could not be converted to bounding boxes for partly unknown reasons: 
+63165.tif
+63166.tif
+78220.tif
+
+
+**count labeled pixels**
+
+    python /workspace/code/tools/count_labeled_pixels.py /workspace/data/final_data//training/labels/
+
+1.1 % of all pixles in the chips are labaled as hunting pits. Try to use this to set weights to 0.011 
+
 # Train and evaluate Unet on individual indicies
 
 **Hillshade**
 run batchscript with ./code/train_test_unet.sh
 
-    mkdir /workspace/data/logfiles/pits/hillshade5/
-    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits/hillshade/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/hillshade5/ --weighting="0.01,1" --seed=40 --epochs 100 --batch_size=4
+    mkdir /workspace/data/logfiles/256/hillshade1/
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data/training/hillshade/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/256/hillshade1/ --weighting="0.011,1" --seed=40 --epochs 100 --batch_size=16
 
     python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits/hillshade/ /workspace/data/split_data_pits/labels/ /workspace/data/logfiles/pits/hillshade5/trained.h5 /workspace/data/logfiles/pits/hillshade5/eval.csv --selected_imgs=/workspace/data/logfiles/pits/hillshade5/valid_imgs.txt --classes=0,1
 **Maximum elevation deviation**
@@ -318,22 +385,6 @@ post processing
 
 
 
-**Start the notebook:**
-
-    jupyter notebook --ip=0.0.0.0 --no-browser --allow-root
-
-Copy the notebook link and then detach the screen environment with:
-
-    ctlr + a + d
-
-
-
-
-
-
-
-
-
 
 
 
@@ -343,85 +394,17 @@ This section uses the docker container tagged "detection". the segmentation cont
 
     screen -S detection
 
-    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar detection:latest
 
-## Create bounding boxes
-Bounding boxes requires multiple steps to create:
-
-    1. The observations needs to be split based on object type.\
-    2. New segmentation masks has to be created from those split objects\
-    3. Bounding boxes are created from the segmentation masks.
-    4. Finally bounding boxes are merged
-
-This script needs segmentation masks where each object has its own uniqe ID. I could not figure out how to convert segmentation masks with multiple objects labeled with the same ID. To work around this issue I created individual segmentation masks for each object and merged the bounding boxes aftewards.
-
-**Split observations based on object type**\
-The Explode observations script takes a shapefile with all training data and splits it into seperate shapefiles based on the feature class type. For example 1.shp = Hunting pits and 2.shp = Charcoal kilns. In the next step the script "create_segmentation_masks.py" is applied to each shapefile seperatly.
-
-    python /workspace/code/tools/explode_observations.py /workspace/code/data/remains.shp Classvalue /workspace/data/object_detection/explode_objects/
-
-**Segmentation masks for hunting pits**
-
-    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles/ /workspace/data/object_detection/explode_objects/1.shp object_id /workspace/data/object_detection/segmentation_masks/hunting_pits/
-
-**Segmentation masks for charcoal kilns**
-
-    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles/ /workspace/data/object_detection/explode_objects/2.shp object_id /workspace/data/object_detection/segmentation_masks/charcoal_kilns/
+    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar segmentation:latest
 
 
-    1. Give each object uniqe IDs
-    2. split shapefile based on IDs
-    3. run "create_segmentation_masks.py on seperate shapefiles what happens with empty tiles?
-    4. Split tiles to chips
 
-This only works if the chips have the same names....
-split will give tiles the same name!
-
-The shapefile containing the labeled features were split into seperate files for each type of object.
-
-
-## Split segmentation masks
-
-**Split segmentation masks - Hunting pits**
-
-    python /workspace/code/tools/split_training_data.py /workspace/data/object_detection/segmentation_masks/hunting_pits/ /workspace/data/object_detection/split_segmentations_masks/hunting_pits --tile_size 250
-
-**Split segmentation masks - Charcoal kilns**
-
-    python /workspace/code/tools/split_training_data.py /workspace/data/object_detection/segmentation_masks/charcoal_kilns/ /workspace/data/object_detection/bounding_boxes/charcoal_kilns --tile_size 250
-
-**Convert segmentation masks to bounding boxes - Hunting pits**
-
-
-    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/split_segmentations_masks/hunting_pits/ 250 1 /workspace/data/object_detection/bounding_boxes/hunting_pits/
-
-**Convert segmentation masks to bounding boxes - Charcoal kilns**
-
-    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/split_segmentations_masks/charcoal_kilns/ 250 2 /workspace/data/object_detection/bounding_boxes/charcoal_kilns/
-
-
-**Merge charcoal kilns and hunting pits's bounding boxes**\
-some image chips contain two classes of bounding boxes. This script merges those text files and then copies everything to a new directory with both overlapping and none overlaping bounding boxes.
-
-    python /workspace/code/object_detection/merge_bounding_boxes.py /workspace/data/object_detection/bounding_boxes/hunting_pits/ /workspace/data/object_detection/bounding_boxes/charcoal_kilns/ /workspace/data/object_detection/bounding_boxes/merged_charcoal_hunting/
-
-**Select image chips based on the names of bounding boxes files**
-    python /workspace/code/object_detection/select_chips_with_labels.py /workspace/data/object_detection/bounding_boxes/merged_charcoal_hunting/ /workspace/data/split_data/hillshade/ /workspace/data/object_detection/bounding_boxes/topographical_indices/hillshade/ 
-
-**FileNotFoundError: [Errno 2] No such file or directory: '/workspace/data/split_data/hillshade/8004.tif'**
-TODO split data again?
-346 tiles in labels
-346 tiles in selected tiles
-346 tiles in topographical normalized
-
-Try to split again
-    python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized/hillshade/ /workspace/data/object_detection/split_hillshade/ --tile_size 250
 
 **Partition training data**\
- The data is split into training data, testing data and validation data. The traning data will be used to train the model and validation data will be used to experiment while the testing data is held for the final results. 
+ The data is split into training data, testing data and validation data. The traning data will be used to train the model and validation data will be used to experiment while the testing data is held for the final results. The datasplit was already done during the segmentation and will be reused for the object detection.
  
 
-    python /workspace/code/object_detection/partition_YOLO_data.py /workspace/data/object_detection/bounding_boxes/topographical_indices/hillshade /workspace/data/object_detection/bounding_boxes/merged_charcoal_hunting/ /workspace/data/object_detection/bounding_boxes/partitioned_data/hillshade/images/train/ /workspace/data/object_detection/bounding_boxes/partitioned_data/hillshade/images/val/ /workspace/data/object_detection/bounding_boxes/partitioned_data/hillshade/images/test/ /workspace/data/object_detection/bounding_boxes/partitioned_data/hillshade/labels/train/ /workspace/data/object_detection/bounding_boxes/partitioned_data/hillshade/labels/val/ /workspace/data/object_detection/bounding_boxes/partitioned_data/hillshade/labels/test/
+    
 
 ## Train YOLO
 This part is adapted from https://github.com/ultralytics/yolov5
@@ -492,6 +475,25 @@ hpmf
 
     python Y:/William/GitHub/Remnants-of-charcoal-kilns/post_processing.py D:/kolbottnar/inference/34_inference/ D:/kolbottnar/inference/34_post_processing/raw_polygons/ D:/kolbottnar/inference/34_post_processing/filtered_polygons/ --min_area=400 --min_ratio=-0.3
  
+# Notes
+
+This script needs segmentation masks where each object has its own uniqe ID. I 
+
+**Split observations based on object type**\
+The Explode observations script takes a shapefile with all training data and splits it into seperate shapefiles based on the feature class type. For example 1.shp = Hunting pits and 2.shp = Charcoal kilns. In the next step the script "create_segmentation_masks.py" is applied to each shapefile seperatly.
+
+    python /workspace/code/tools/explode_observations.py /workspace/code/data/remains.shp Classvalue /workspace/data/object_detection/explode_objects/
+
+**Convert segmentation masks to bounding boxes - Charcoal kilns**
+
+    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/split_segmentations_masks/charcoal_kilns/ 256 2 /workspace/data/object_detection/bounding_boxes/charcoal_kilns/
+
+
+**Merge charcoal kilns and hunting pits's bounding boxes**\
+some image chips contain two classes of bounding boxes. This script merges those text files and then copies everything to a new directory with both overlapping and none overlaping bounding boxes.
+
+    python /workspace/code/object_detection/merge_bounding_boxes.py /workspace/data/object_detection/bounding_boxes/hunting_pits/ /workspace/data/object_detection/bounding_boxes/charcoal_kilns/ /workspace/data/object_detection/bounding_boxes/merged_charcoal_hunting/
+
 ## contact information
 Mail:
 <William.lidberg@slu.se>\

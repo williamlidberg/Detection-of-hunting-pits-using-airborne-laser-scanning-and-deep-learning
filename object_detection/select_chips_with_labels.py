@@ -1,10 +1,12 @@
 import os
 import shutil
 
-def main(bounding_boxes, topographical_indice, output_topo_dir):
-    for f in os.listdir(bounding_boxes):
-        if f.endswith('.txt'):
-            shutil.copy(os.path.join(topographical_indice, f.replace('.txt', '.tif')), os.path.join(output_topo_dir, f.replace('.txt', '.tif')))
+def main(segmentation_masks, detection_masks, selected_detection_masks):
+    for chip in os.listdir(segmentation_masks):
+        if chip.endswith('.tif'):
+            input_chip = detection_masks + chip
+            output_chip = selected_detection_masks + chip
+            shutil.copy(input_chip, output_chip)
 
 
 if __name__ == '__main__':
@@ -14,9 +16,9 @@ if __name__ == '__main__':
                        description='Merge bounding boxes '
                                    'image(s)',
                        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('bounding_boxes', help= 'path to directory with merged bounding boxes')
-    parser.add_argument('topographical_indice', help= 'Path to dir of image chips from topographical incides')
-    parser.add_argument('output_topo_dir', help= 'path do directory where selected topographical data will be stored')
+    parser.add_argument('segmentation_masks', help= 'path to directory with segmentation masks')
+    parser.add_argument('detection_masks', help= 'path to splited detection masks')
+    parser.add_argument('selected_detection_masks', help= 'path do directory where selected detection masks will be saved')
 
     args = vars(parser.parse_args())
     main(**args)

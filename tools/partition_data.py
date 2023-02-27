@@ -1,6 +1,7 @@
 import csv
 import shutil
 import re
+import argparse
 
 def main(original_images, moved_test_images, test_chips_csv):
     with open(test_chips_csv, newline='') as f:
@@ -9,13 +10,21 @@ def main(original_images, moved_test_images, test_chips_csv):
         for chip in test_list:
             name = str(chip)
             cleaned_name = name.replace("[","").replace("]", "").replace("'","")
-            original_chips = original_images + cleaned_name
-            moved_chips = moved_test_images + cleaned_name
-            shutil.move(original_chips, moved_chips)
+            if cleaned_name.endswith('.tif'):
+                try:
+                    original_chips = original_images + cleaned_name
+                    moved_chips = moved_test_images + cleaned_name
+                    shutil.move(original_chips, moved_chips)
+                except:
+                    new_name = cleaned_name.replace('.tif','.txt')         
+                    original_chips = original_images + new_name
+                    moved_chips = moved_test_images + new_name
+                    shutil.move(original_chips, moved_chips)              
+
 
 
 if __name__ == '__main__':
-    import argparse
+    
 
     parser = argparse.ArgumentParser(
                        description='moves test chips to a new directory using previsouly created partition csv',

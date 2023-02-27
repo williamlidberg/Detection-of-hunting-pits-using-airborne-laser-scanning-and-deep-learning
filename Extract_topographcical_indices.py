@@ -131,6 +131,7 @@ class Topographical_indices:
         normed_depthinsink = img/10 # devide by 10 to change scale to 0-1.
         utils.WriteGeotiff.write_gtiff(normed_depthinsink, extent, normalized_depthinsink, gdal.GDT_Float32)
 
+
 def clean_temp(temp_dir):
     for root, dir, fs in os.walk(temp_dir):
         for f in fs:
@@ -159,7 +160,6 @@ def main(temp_dir, input_path, output_path_hillshade, output_maxelevationdeviati
         maxelevationdeviation = os.path.join(output_maxelevationdeviation,'{}.{}'.format(img_name, 'tif')) 
         multiscaleelevationpercentile = os.path.join(output_multiscaleelevationpercentile,'{}.{}'.format(img_name, 'tif')) 
         depthinsink = os.path.join(output_depthinsink,'{}.{}'.format(img_name, 'tif')) 
-
 
         extent = gdal.Open(img_path) # extract projection and extent from input image
         topographical = Topographical_indices(temp_dir)

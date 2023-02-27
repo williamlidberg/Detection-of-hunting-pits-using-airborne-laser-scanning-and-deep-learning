@@ -10,17 +10,17 @@ import numpy as np
 import pybboxes as pbx
 
 
-def boxes(temp_dir, labels_dir, image_size, label_class, bounding_box_dir):
-    for tile in os.listdir(labels_dir):
+def boxes(temp_dir, detection_masks_ID_dir, image_size, label_class, bounding_box_dir):
+    for tile in os.listdir(detection_masks_ID_dir):
         if tile.endswith('.tif'):
-            mask = tifffile.imread(labels_dir + tile)
+            mask = tifffile.imread(detection_masks_ID_dir + tile)
             mask = mask.astype(np.uint8)
             mask_from_array = Image.fromarray(mask)
             temp_img = temp_dir + tile.replace('.tif', '.png')
             mask_from_array.save(temp_img) # save image as png so it can be read with read_img. There must be a better way to do this.
-            mask = read_image(temp_img) 
+            mask = read_image(temp_img)
             obj_ids = torch.unique(mask)
-            obj_ids = obj_ids[1:] 
+            obj_ids = obj_ids[1:]
             masks = mask == obj_ids[:, None, None]
             boxes = masks_to_boxes(masks)
             
@@ -50,9 +50,10 @@ def clean_temp(temp_dir):
             os.remove(os.path.join(root, f))
 
 
-def main(temp_dir, labels_dir, image_size, label_class, bounding_box_dir):
-    boxes(temp_dir, labels_dir, image_size, label_class, bounding_box_dir)
+def main(temp_dir, detection_masks_ID_dir, image_size, label_class, bounding_box_dir):
+    boxes(temp_dir, detection_masks_ID_dir, image_size, label_class, bounding_box_dir)
     clean_temp(temp_dir)
+
 
 if __name__ == '__main__':
     import argparse
@@ -62,7 +63,7 @@ if __name__ == '__main__':
                                    'image(s)',
                        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('temp_dir', help= 'Path to temp dir')
-    parser.add_argument('labels_dir', help= 'Path to segmentation masks or folder of dems')
+    parser.add_argument('detection_masks_ID_dir', help= 'Path to segmentation masks or folder of dems')
     parser.add_argument('image_size', type=int, help= 'size of image in number of pixels')
     parser.add_argument('label_class', type=int, help= 'class to give the labels')
     parser.add_argument('bounding_box_dir', help= 'Path to dem or folder of dems')
