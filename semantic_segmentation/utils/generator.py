@@ -1,9 +1,25 @@
 import os
+import sys
+import logging
 import numpy as np
 import tifffile
 import cv2
 import tensorflow as tf
 
+
+def _parse_classes(classes):
+    '''Convert class string to list if necessary
+    Parameters
+    ----------
+    classes : String or list of integer classes
+    Returns
+    -------
+    List of integer classes
+    '''
+    if isinstance(classes, str):
+        classes = [int(f) for f in classes.split(',')]
+
+    return classes
 
 class DataGenerator(tf.keras.utils.Sequence):
     def __init__(self, img_paths, gt_path, classes, batch_size=1, augment=True,
@@ -18,8 +34,8 @@ class DataGenerator(tf.keras.utils.Sequence):
                     images
         gt_path : Path to the folder with the groundtruth images - classes need
                   to be encoded by integers
-        classes : List of integer class labels to be found in groundtruth
-                  images
+        classes : String or list of integer class labels to be found in
+                  groundtruth images
         batch_size : Batch size, optional
         augment : Apply augmentation, optional
         steps_per_epoch : Number of batches to produce per epoch, optional
@@ -42,8 +58,8 @@ class DataGenerator(tf.keras.utils.Sequence):
                 or (size is None and include is not None and exclude is None))
         self.batch_size = batch_size
         self.augment = augment
-        self.classes = classes
-        self.class_num = len(classes)
+        self.classes = _parse_classes(classes)
+        self.class_num = len(self.classes)
         self.steps_per_epoch = steps_per_epoch
 
         # problem info
@@ -68,9 +84,11 @@ class DataGenerator(tf.keras.utils.Sequence):
                                         self.class_num)
             assert len(self.class_weights) == self.class_num, error
 
-        print("Class weights set to: {}".format(self.class_weights))
+        logging.info("Class weights set to: %s", self.class_weights)
 
         self.on_epoch_end()
+
+
 
     def __infer_mfb_weights(self):
         '''Calculate weights using median frequency balancing.
@@ -90,16 +108,29 @@ class DataGenerator(tf.keras.utils.Sequence):
 
         for idx in self.selected:
             gt = tifffile.imread(self.paths[idx][1])
+            gt_pixels = np.prod(gt.shape)
             for c in self.classes:
                 class_counts[c] += np.sum(gt == c)
                 # only count the image if it contains at least one instance of
                 # the current class
                 if (gt == c).any():
-                    class_totals[c] += np.sum(gt)
+                    class_totals[c] += gt_pixels
 
         frequencies = []
-        for cnt, tot in zip(class_counts, class_totals):
-            frequencies.append(cnt/tot)
+        for cls_idx in self.classes:
+            cnt = class_counts[cls_idx]
+            tot = class_totals[cls_idx]
+            if cnt == 0 and tot == 0:
+                print("WARN: No pixel of class {} found.".format(cls_idx),
+                      file=sys.stderr)
+                # This case should not happen. However, if it does, setting the
+                # frequency to a small value ensures that the code can run.
+                frequencies.append(0.0001)
+            elif cnt > tot:
+                raise ValueError('Count mismatch class: {} Count: {} Total: {}'
+                                 .format(cls_idx, cnt, tot))
+            else:
+                frequencies.append(cnt/tot)
 
         weights = [np.median(frequencies) / freq for freq in frequencies]
 
@@ -217,12 +248,13 @@ class DataGenerator(tf.keras.utils.Sequence):
         weights = []
 
         for img_paths, gt_path in batch:
+            # gt = cv2.imread(gt_path, cv2.IMREAD_GRAYSCALE)
             gt = tifffile.imread(gt_path)
 
             if self.augment:
                 transform = None
                 flip = None
-                #select = self.rng.integers(0, 2, 3)
+                # select = self.rng.integers(0, 2, 3)
                 select = self.rng.integers(0, 2, 2)
                 if select[0]:
                     flip = self.choose_flip_augmentation(self.rng)
@@ -234,9 +266,11 @@ class DataGenerator(tf.keras.utils.Sequence):
             # Create input image with containing all provided bands
             tmp = np.zeros(self.input_shape)
             for i, img_path in enumerate(img_paths):
+                # img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
                 img = tifffile.imread(img_path)
                 if self.augment:
                     img = self.apply_transform(img, flip, transform)
+                # img = img.astype(np.float32) / 255.
                 img = img.astype(np.float32)
                 tmp[:, :, i] = img
             X.append(tmp)

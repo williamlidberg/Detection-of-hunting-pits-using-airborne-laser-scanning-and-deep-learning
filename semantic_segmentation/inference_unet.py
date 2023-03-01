@@ -108,7 +108,7 @@ def read_input(bands):
 #def main(input_path, model_path, out_path, img_type, tile_size, margin,
 #         threshold, wo_crf):
 def main(img_path, model_path, out_path, img_type, tile_size, margin, 
-         depth, class_num, unet_mode):
+         depth, class_num):
 
     # setup paths
     for path in img_path:
@@ -127,8 +127,7 @@ def main(img_path, model_path, out_path, img_type, tile_size, margin,
     # load model
     input_shape = (tile_size, tile_size, len(imgs))
     unet = utils.unet.XceptionUNet(input_shape, depth=depth,
-                                   classes=class_num,
-                                   mode=unet_mode)
+                                   classes=class_num)
     unet.model.load_weights(model_path)
     model = unet.model
 
@@ -197,9 +196,9 @@ if __name__ == '__main__':
     parser.add_argument('--margin', help='Margin', type=int, default=50)
     parser.add_argument('--depth', help='UNet depth', type=int, default=2)
     parser.add_argument('--class_num', help='Number of classes', type=int, default=2)
-    parser.add_argument('--unet_mode', choices=utils.unet.XceptionUNet.UNET_MODES,
-                        default=utils.unet.XceptionUNet.UNET_MODES[0], 
-                        help='Choose UNet architecture configuration')
+    # parser.add_argument('--unet_mode', choices=utils.unet.XceptionUNet.UNET_MODES,
+    #                     default=utils.unet.XceptionUNet.UNET_MODES[0], 
+    #                     help='Choose UNet architecture configuration')
 
     args = vars(parser.parse_args())
     main(**args)

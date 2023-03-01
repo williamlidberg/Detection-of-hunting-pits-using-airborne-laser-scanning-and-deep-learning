@@ -33,7 +33,7 @@ def calculate_metrics(results, pred, gt, i):
         results.setdefault(name.format(i), []).append(val)
 
 
-def main(img_path, gt_path, selected_imgs, model_path, out_path, depth, classes, unet_mode):
+def main(img_path, gt_path, selected_imgs, model_path, out_path, depth, classes):
     size = 1 if selected_imgs is None else None
     # convert string representations of class labels into lists
     classes = [int(f) for f in classes.split(',')]
@@ -43,8 +43,8 @@ def main(img_path, gt_path, selected_imgs, model_path, out_path, depth, classes,
                                               size=size, augment=False)
     # load unet weights
     unet = utils.unet.XceptionUNet(valid_gen.input_shape, depth=depth,
-                                   classes=valid_gen.class_num,
-                                   mode=unet_mode)
+                                   classes=valid_gen.class_num)
+                                   #mode=unet_mode)
     unet.model.load_weights(model_path)
     model = unet.model
 
@@ -86,9 +86,9 @@ if __name__ == '__main__':
     parser.add_argument('--classes', help='List of class labels in ground '
                         'truth - order needs to correspond to weighting order',
                         default='0,1')
-    parser.add_argument('--unet_mode', choices=utils.unet.XceptionUNet.UNET_MODES,
-                        default=utils.unet.XceptionUNet.UNET_MODES[0], 
-                        help='Choose UNet architecture configuration')
+    # parser.add_argument('--unet_mode', choices=utils.unet.XceptionUNet.UNET_MODES,
+    #                     default=utils.unet.XceptionUNet.UNET_MODES[0], 
+    #                     help='Choose UNet architecture configuration')
 
     args = vars(parser.parse_args())
     main(**args)

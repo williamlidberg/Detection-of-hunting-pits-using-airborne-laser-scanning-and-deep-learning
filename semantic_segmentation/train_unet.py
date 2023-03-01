@@ -1,12 +1,15 @@
 import os
+import logging
 
 import utils.generator
 import utils.unet
 import utils.loss
 import utils.metric
 import tensorflow as tf
-import numpy as np
-import random
+
+
+UNET_MODES = ['default', 'wo_entry']
+
 
 def write_dataset(selected, log_path, name):
     with open(os.path.join(log_path, name), 'w') as f:
@@ -16,27 +19,35 @@ def write_dataset(selected, log_path, name):
 
 def parse_weighting_mode(weighting):
     '''Convert given string into weighting mode representation
-       Supported modes are: "auto", "none" and comma separated weights
+       Supported modes are: "auto", "mfb", "none" and comma separated weights
     Parameters
     ----------
     weighting : String indicating weighting mode
     Returns
     -------
-    Weighting mode representation ("auto"|None|list)
+    Weighting mode representation ("auto"|"mfb"|None|list)
     '''
+    result = None
     if weighting.lower() == 'auto':
-        return 'auto'
+        result = 'auto'
+    elif weighting.lower() == 'mfb':
+        result = 'mfb'
     elif weighting.lower() == 'none':
-        return None
+        result = None
     else:
-        return [float(f) for f in weighting.split(',')]
+        result = [float(f) for f in weighting.split(',')]
 
+    return result
 
 def main(img_path, gt_path, log_path, seed, epochs, depth, batch_size,
-         steps_per_epoch, unet_mode, classes, weighting):
+         steps_per_epoch, band_wise, classes, weighting):
 
-    # convert string representations of class labels and weights into lists
-    classes = [int(f) for f in classes.split(',')]
+    # setup logging
+    logging.basicConfig(filename=os.path.join(log_path, 'train.log'),
+                        filemode='w', level=logging.INFO,
+                        format='%(name)s - %(levelname)s - %(message)s')
+
+    # convert string representations of weights into lists
     weighting = parse_weighting_mode(weighting)
 
     # set seed for tensorflow (and everything else except data generators,
@@ -44,9 +55,7 @@ def main(img_path, gt_path, log_path, seed, epochs, depth, batch_size,
     # does not work for some cuDNN operations - so possibly not totally
     # deterministic
     if seed is not None:
-        random.seed(seed)
-        np.random.seed(seed)
-        tf.random.set_seed(seed)
+        tf.keras.utils.set_random_seed(seed)
     train_gen = utils.generator.DataGenerator(img_path, gt_path, classes,
                                               seed=seed, size=0.8,
                                               steps_per_epoch=steps_per_epoch,
@@ -62,22 +71,24 @@ def main(img_path, gt_path, log_path, seed, epochs, depth, batch_size,
     write_dataset(train_gen.selected, log_path, 'train_imgs.txt')
     write_dataset(valid_gen.selected, log_path, 'valid_imgs.txt')
 
+    # enable entry block only in default unet mode
     unet = utils.unet.XceptionUNet(train_gen.input_shape, depth=depth,
                                    classes=train_gen.class_num,
-                                   mode=unet_mode)
+                                   entry_block=not band_wise)
     metrics = ['accuracy', tf.keras.metrics.Recall()]
     # record IoU for each class separately
-#    for i in range(train_gen.class_num):
-#        metrics.append(tf.keras.metrics.OneHotIoU(num_classes=train_gen.class_num,
-#                                                  target_class_ids=[i,],
-#                                                  name='{}_iou'.format(i)))
+    for i in range(train_gen.class_num):
+        metrics.append(tf.keras.metrics.OneHotIoU(
+                                            num_classes=train_gen.class_num,
+                                            target_class_ids=[i, ],
+                                            name='{}_iou'.format(i)))
     unet.model.compile(
                        # optimizer="rmsprop",
                        optimizer="adam",
                        # optimizer=tf.keras.optimizers.SGD(momentum=0.9),
-                       # loss=jaccard_distance_loss,
-                       loss='binary_crossentropy',
-                       # loss='categorical_crossentropy',
+                       loss=tf.keras.losses.BinaryFocalCrossentropy(gamma=2.0, from_logits=True),
+                       #loss='binary_crossentropy',
+                       #loss='categorical_crossentropy',
                        sample_weight_mode="temporal",
                        # loss=utils.loss.cross_entropy,
                        metrics=metrics)
@@ -121,18 +132,17 @@ if __name__ == '__main__':
                         default=None, type=int)
     parser.add_argument('--epochs', default=100, type=int)
     parser.add_argument('--steps_per_epoch', default=None, type=int)
-    parser.add_argument('--unet_mode', choices=utils.unet.XceptionUNet.UNET_MODES,
-                        default=utils.unet.XceptionUNet.UNET_MODES[0], 
-                        help='Choose UNet architecture configuration')
+    parser.add_argument('--band_wise', action='store_true',
+                        help='Apply separable convolutions on input bands.')
     parser.add_argument('--batch_size', help='Number of patches per batch',
                         type=int, default=4)
     parser.add_argument('--classes', help='List of class labels in ground '
                         'truth - order needs to correspond to weighting order',
                         default='0,1')
     parser.add_argument('--weighting', help='Configure class weights - can be '
-                        '"auto", "none" or defined weight string, e.g., '
-                        '"0.1,1"',
-                        default="auto")
+                        '"auto", "mfb", "none" or defined weight string, '
+                        'e.g., "0.1,1"',
+                        default='0.1,1')
 
     args = vars(parser.parse_args())
     main(**args)

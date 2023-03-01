@@ -101,7 +101,7 @@ if __name__ == '__main__':
     parser.add_argument('temp_dir', help= 'path to a temperary directory')
     parser.add_argument('input_path', help='Path to dem or folder of dems')
     parser.add_argument('output_predictions', help='output_predictions')
-    parser.add_argument('output_type', default='raster',help='output polygon or raster')
+    parser.add_argument('--output_type', default='raster',help='output polygon or raster')
     parser.add_argument('--min_area', help= 'smallest detected polygon in square meters', type=int, default=20)
     parser.add_argument('--min_ratio', help= 'smallest perimiter area ratio', type=float, default=-0.3)
     args = vars(parser.parse_args())

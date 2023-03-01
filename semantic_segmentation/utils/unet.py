@@ -5,15 +5,11 @@ import numpy as np
 from tensorflow import keras
 from tensorflow.keras import layers
 
-#from crfrnn_layer import CrfRnnLayer # don't forget to add this to path: export PYTHONPATH=/home/william/Downloads/crfasrnn_keras-master/src/:$PYTHONPATH
-
 
 class XceptionUNet(object):
 
-    UNET_MODES = ['default', 'wo_entry']
-
     def __init__(self, input_shape, depth=None, activation='softmax',
-                 classes=2, mode=UNET_MODES[0], first_core_filters=128):
+                 classes=2, entry_block=True, first_core_filters=128):
         '''Initialize Xception Unet
         Parameters
         ----------
@@ -22,7 +18,8 @@ class XceptionUNet(object):
                 optional
         activation : Activation function to use in the hidden layers, optional
         classes : Number of target classes, optional
-        mode : UNet mode - currently supported 'default', 'wo_entry'
+        entry_block : Process input image by a CNN before starting the
+                      downsampling with its separated convolutions, optional
         first_core_filters : Number of filters to use in first downsampling
                              block - determines the filter sizes in all
                              subsequent layers, optional
@@ -35,14 +32,7 @@ class XceptionUNet(object):
         depth = 2 if depth is None else depth
         self.activation = activation
         self.classes = classes
-        if mode == self.UNET_MODES[0]:
-            # Process input image by a CNN before starting the
-            # downsampling with its separated convolutions
-            self.entry_block = True
-        elif mode == self.UNET_MODES[1]:
-            self.entry_block = False
-        else:
-            raise ValueError('Unsupported mode: {}'.format(mode))
+        self.entry_block = entry_block
         self.__set_depth(depth, first_core_filters)
         self.padding = self.__compute_padding(self.input_shape, depth, self.entry_block)
         self.model = self.__setup_model()
@@ -67,7 +57,7 @@ class XceptionUNet(object):
         t_b = self.__pad(y, downsampling_steps)
 
         return t_b, l_r
-        
+
 
     def __set_depth(self, depth, first_core_filters):
         # setup filter list for downsampling
@@ -163,44 +153,6 @@ class XceptionUNet(object):
         # Define the model
         model = keras.Model(inputs, outputs)
         return model
-
-
-class XceptionUNetCRF(XceptionUNet):
-
-    def __init__(self, input_shape, model_path=None, iterations=10):
-        super().__init__(input_shape, activation=None)
-        if model_path is not None:
-            self.model.load_weights(model_path)
-        self.iterations = iterations
-        self.crf_model = self.__setup_crf_model()
-
-    def __setup_crf_model(self):
-        self.model.trainable = False
-
-        outputs = layers.Reshape((self.input_shape[0],
-                                  self.input_shape[1],
-                                  self.classes))(self.model.outputs[0])
-        # create fake RGB image
-        inputs = layers.concatenate([self.model.inputs[0],
-                                     self.model.inputs[0],
-                                     self.model.inputs[0]], axis=3)
-        crf_layer = CrfRnnLayer(image_dims=self.input_shape[:-1],
-                                num_classes=self.classes,
-                                theta_alpha=3.,
-                                theta_beta=160.,
-                                theta_gamma=3.,
-                                num_iterations=self.iterations,
-                                name='crfrnn')([outputs,
-                                               inputs])
-        # reshape to make loss weighting possible
-        outputs = layers.Reshape((-1, self.classes))(crf_layer)
-        # apply softmax
-        outputs = layers.Softmax()(outputs)
-
-        model = keras.Model(inputs=self.model.input,
-                            outputs=outputs)
-        return model
-
 
 class UNet(object):
 
