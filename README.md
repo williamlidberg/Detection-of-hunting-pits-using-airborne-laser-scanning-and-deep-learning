@@ -16,8 +16,8 @@ The aim of this project is to evaluate methods to automatically detect trapping 
 
 1. [Docker containers](#Docker-containers)
 3. [Training data](#Training-data)
-4. [Create digital elevation model](#Create-digital-elevation-model)
-5. [Extract and normalize topographical indices](#Extract-and-normalize-topographical-indices)
+    1. [Create digital elevation model](##Create-digital-elevation-model)
+    2. [Extract and normalize topographical indices](##Extract-and-normalize-topographical-indices)
 6. [Semantic segmentation](#Semantic-segmentation)
     1. [Create segmentation masks](##Create-segmentation-mask)
     2. [Create image chips](##Create-image-chips)
@@ -43,13 +43,15 @@ The aim of this project is to evaluate methods to automatically detect trapping 
 # Docker containers
 Docker containers will be used to manage all envrionments in this project. Different images were used for segmentation and object detection\
 **Segmentation:**
-
+semantic_segmentation\Dockerfile
+\
 **Object detection:**
+object_detection\Dockerfile
 
 Navigate to respective dockerfile in the segmentation or object detection directories and build the containers
 
     docker build -t segmentation .
-    docker build -t detection https://github.com/williamlidberg/Cultural-remains.git#main:object_detection
+    docker build -t detection .
 
 You can run the container in the background with screen
 
@@ -57,17 +59,13 @@ You can run the container in the background with screen
 
     docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar segmentation:latest
 
-
-
-
-
 # Training data
 The training data were collected from multiple sources. Historical forest maps from local archives where digitized and georeferenced. Open data from the [swedish national heritage board were downloaded and digitized](https://pub.raa.se/). All remains where referenced with the liDAR data in order to match the reported remain to the LiDAR data. In total x hunting pits where manually digitized and corrected this way.
 
-# Create digital elevation model
+## Create digital elevation model
 The laser data contained 1-2 points / m2 and can be downloaded from Lantmäteriet: https://www.lantmateriet.se/en/geodata/geodata-products/product-list/laser-data-download-forest/. The Laser data is stored as .laz tiles where each tile is 2 500 m x 2 500 m
 
-**Select lidar tiles based on locatiaon of training data**\
+**Select lidar tiles based on location of training data**\
 First pool all laz files in a single directory
 
     python /workspace/code/tools/pool_laz.py
@@ -84,8 +82,9 @@ Finally use whitebox tools to create digital elevation models from the selected 
 **Training and testing areas**
     python /workspace/code/tools/laz_to_dem.py /workspace/data/selected_lidar_tiles_pits/ /workspace/data/dem_tiles_pits/ 0.5
 
+    python /workspace/code/tools/laz_to_dem.py /workspace/data/selected_lidar_tiles_pits/ /workspace/data/dem_tiles_pits_1m/ 1.0
 
-
+<br/>
 
 ## Extract and normalize topographical indices
 Training a model directly on the digital elevation model is not practical since the values ranges from 0 to 2000 m. Instead different topographical indices were extracted from the DEM. The topographical data will be the same for both segmentation and object detection. All topographical indices are extracted using [Whitebox Tools](https://www.whiteboxgeo.com/manual/wbt_book/preface.html). The indices used are:  
@@ -101,15 +100,12 @@ Training a model directly on the digital elevation model is not practical since 
 *   [Depth In Sink](https://www.whiteboxgeo.com/manual/wbt_book/available_tools/hydrological_analysis.html?highlight=depth#depthinsink)
 
 
-This script extracts the topographical indices and normalizes them between 0 and 1. This step takes around 30 seconds / tile. It would take about 26 days for Sweden.
+This script extracts the topographical indices and normalizes them between 0 and 1. This step takes around 30 seconds / tile. It would take about 26 days for Sweden on 0.5 m resolution.
 
     python /workspace/code/Extract_topographcical_indices.py /workspace/temp/ /workspace/data/dem_tiles_pits/ /workspace/data/topographical_indices_normalized_pits/hillshade/ /workspace/data/topographical_indices_normalized_pits/maxelevationdeviation/ /workspace/data/topographical_indices_normalized_pits/multiscaleelevationpercentile/ /workspace/data/topographical_indices_normalized_pits/minimal_curvature/ /workspace/data/topographical_indices_normalized_pits/maximal_curvature/ /workspace/data/topographical_indices_normalized_pits/profile_curvature/ /workspace/data/topographical_indices_normalized_pits/stdon/ /workspace/data/topographical_indices_normalized_pits/multiscale_stdon/ /workspace/data/topographical_indices_normalized_pits/elevation_above_pit/ /workspace/data/topographical_indices_normalized_pits/depthinsink/
+
+    python /workspace/code/Extract_topographcical_indices.py /workspace/temp/ /workspace/data/dem_tiles_pits_1m/ /workspace/data/topographical_indices_normalized_pits_1m/hillshade/ /workspace/data/topographical_indices_normalized_pits_1m/maxelevationdeviation/ /workspace/data/topographical_indices_normalized_pits_1m/multiscaleelevationpercentile/ /workspace/data/topographical_indices_normalized_pits_1m/minimal_curvature/ /workspace/data/topographical_indices_normalized_pits_1m/maximal_curvature/ /workspace/data/topographical_indices_normalized_pits_1m/profile_curvature/ /workspace/data/topographical_indices_normalized_pits_1m/stdon/ /workspace/data/topographical_indices_normalized_pits_1m/multiscale_stdon/ /workspace/data/topographical_indices_normalized_pits_1m/elevation_above_pit/ /workspace/data/topographical_indices_normalized_pits_1m/depthinsink/
     
-    real    105m27.086s
-    user    1293m36.302s
-    sys     89m0.528s
-
-
 <img src="images/distribution.PNG" alt="Distribution of normalized topographical indicies" width="50%"/>\
 Distribution of the normalised topographical indices from one tile.
 
@@ -129,6 +125,8 @@ The left image is a hunting pit (kids for scale) and the right image is the same
 The training data is stored as digitized polygons where each feature class is stored in the column named "classvalue". Note that only polygons overlapping a dem tile will be converted to a labeled tile. polygons outside of dem tiles are ignored.
 
     python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles_pits/ /workspace/code/data/Hunting_pits_covered_by_lidar.shp Classvalue /workspace/data/segmentation_masks_pits/
+
+    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles_pits_1m/ /workspace/code/data/Hunting_pits_covered_by_lidar.shp Classvalue /workspace/data/segmentation_masks_pits_1m/
     
 ## Create image chips
 Each of the 2.5km x 2.5km dem tiles were Split into smaller image chips with the size 256 x 256 pixels. This corresponds to 125m x 125m in with a 0.5m DEM resolution.
@@ -139,6 +137,8 @@ The bash script ./code/split_indices.sh will remove and create new directories a
 
     ./code/split_indices.sh
 
+    ./code/split_indices_1m.sh
+
 
 
 
@@ -146,21 +146,44 @@ The bash script ./code/split_indices.sh will remove and create new directories a
 Bounding boxes can be created from segmentation masks if each object has a uniqe ID. A different column in the shapefile was used to achive this : object_id. Run the "create_segmentation_mask.py script on this column.
 
 **Create new segmentation masks with uniqe ID**
+
+
     python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles_pits/ /workspace/code/data/Hunting_pits_covered_by_lidar.shp object_id /workspace/data/object_detection/segmentation_masks/hunting_pits/
 
+    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles_pits_1m/ /workspace/code/data/Hunting_pits_covered_by_lidar.shp object_id /workspace/data/object_detection/segmentation_masks/hunting_pits_1m/
+
 **Split segmentation masks into chips**
+
     python /workspace/code/tools/split_training_data.py /workspace/data/object_detection/segmentation_masks/hunting_pits/ /workspace/data/object_detection/split_segmentations_masks/ --tile_size 256
 
+    python /workspace/code/tools/split_training_data.py /workspace/data/object_detection/segmentation_masks/hunting_pits_1m/ /workspace/data/object_detection/split_segmentations_masks_1m/ --tile_size 256
+
 **Convert selected segmentation masks to bounding boxes**
+
 Use the object detection docker image to create bounding boxes. copy relevant tiles first?
 
     docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar detection:latest
 
-    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/split_segmentations_masks/ 256 1 /workspace/data/final_data/training_labaled/bounding_boxes/
+    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/split_segmentations_masks/ 256 0 /workspace/data/object_detection/bounding_boxes/
 
-Due to the mirroring of chips when splitting tiles I ended up with some strange examples where the bounding box streches over both mirrored pits. These chips were moved to:Y:\William\Projects\Cultural_remains\data\object_detection\strange_boxes. Copy correct labeled chips to new directories
+    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/split_segmentations_masks_1m/ 256 0 /workspace/data/object_detection/bounding_boxes_1m/
+
+The 1 m bounding boxes failed at the following chips:
+failed at file  5081.tif
+failed at file  12466.tif
+failed at file  14035.tif
+failed at file  14064.tif
+failed at file  16686.tif
+failed at file  19763.tif
+
+
+Due to the mirroring of chips when splitting tiles I ended up with some strange examples where the bounding box streches over both mirrored pits. These chips were moved to:Y:\William\Projects\Cultural_remains\data\object_detection\strange_boxes and Y:\William\Projects\Cultural_remains\data\object_detection\strange_boxes_1m. Copy correct labeled chips to new directories. Use YoloBBoxChecker to inspect bounding boxes. Put split images with labaled pixels and bounding boxes in the same directory and change paths in YoloBBoxChecker\main.py
+
+    python /workspace/code/object_detection/YoloBBoxChecker/main.py
 
     python /workspace/code/tools/delete_misslabeled_chips.py /workspace/data/final_data/all /workspace/data/object_detection/strange_boxes/
+
+    python /workspace/code/tools/delete_misslabeled_chips.py /workspace/data/final_data/all /workspace/data/object_detection/strange_boxes_1m/
 
 copy matching bounding boxes to final directory:
     import os
@@ -273,75 +296,73 @@ python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/
 **Depth in sink**
 
 
-# Train U-net on all indicies
+## Train U-net on all indicies
+**Train using mfb weights**
 This is an example on how to train the model with all topographical indices:
 
     python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/multiscaleelevationpercentile/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/maximal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/multiscale_stdon/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/256/everything1/ --weighting="mfb" --seed=40 --epochs=100 --batch_size=16 --classes=0,1
 
-Evaluate
+Evaluate mfb
 
-    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/multiscaleelevationpercentile/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/maximal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/multiscale_stdon/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/pits/everything1/trained.h5 /workspace/data/logfiles/pits/everything1/eval.csv --selected_imgs=/workspace/data/logfiles/pits/everything1/valid_imgs.txt --classes=0,1
-    
-Train using weights based on real distribution (0.016)
-    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/multiscaleelevationpercentile/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/maximal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/multiscale_stdon/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/pits/everything2/ --weighting="0.016,1" --seed=40 --epochs 100
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/multiscaleelevationpercentile/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/maximal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/multiscale_stdon/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/256/everything1/trained.h5 /workspace/data/logfiles/256/everything1/eval.csv --selected_imgs=/workspace/data/logfiles/256/everything1/valid_imgs.txt --classes=0,1
 
+**Train using auto weights based**
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/multiscaleelevationpercentile/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/maximal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/multiscale_stdon/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/256/everything2/ --weighting="auto" --seed=40 --epochs=100 --batch_size=16 --classes=0,1
 
-Evaluate 2
+Evaluate auto weigths
 
-    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/multiscaleelevationpercentile/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/maximal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/multiscale_stdon/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/pits/everything2/trained.h5 /workspace/data/logfiles/pits/everything2/eval.csv --selected_imgs=/workspace/data/logfiles/pits/everything2/valid_imgs.txt --classes=0,1
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/multiscaleelevationpercentile/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/maximal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/multiscale_stdon/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/256/everything2/trained.h5 /workspace/data/logfiles/256/everything2/eval.csv --selected_imgs=/workspace/data/logfiles/256/everything2/valid_imgs.txt --classes=0,1
 
-
-
-
-without depthinsink AND MULTISCALEELEVATIONPERCENTILE
+**Train using weights based on real distribution (0.01)**
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/multiscaleelevationpercentile/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/maximal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/multiscale_stdon/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/256/everything3/ --weighting="0.01,1" --seed=40 --epochs=100 --batch_size=16 --classes=0,1
 
 
-    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/pits/pits1/ --weighting="0.01,1" --seed=40 --epochs 100 
+Evaluate weights based on real distribution (0.01)
 
-without MULTISCALEELEVATIONPERCENTILE batch size 16
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/multiscaleelevationpercentile/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/maximal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/multiscale_stdon/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/256/everything3/trained.h5 /workspace/data/logfiles/256/everything3/eval.csv --selected_imgs=/workspace/data/logfiles/256/everything3/valid_imgs.txt --classes=0,1
 
-    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/pits/pits14/ --weighting="0.01,1" --seed=40 --epochs 100 --batch_size=16
+**Train using weights based on double real distribution (0.02)**
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/multiscaleelevationpercentile/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/maximal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/multiscale_stdon/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/256/everything4/ --weighting="0.01,1" --seed=40 --epochs=100 --batch_size=16 --classes=0,1
 
-without MULTISCALEELEVATIONPERCENTILE batch size 4 weights real
 
-    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/pits/pits15/ --weighting="0.002,1" --seed=40 --epochs 100 --batch_size=4
+Evaluate weights based on double real distribution (0.02)
+
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/multiscaleelevationpercentile/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/maximal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/multiscale_stdon/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/256/everything4/trained.h5 /workspace/data/logfiles/256/everything4/eval.csv --selected_imgs=/workspace/data/logfiles/256/everything4/valid_imgs.txt --classes=0,1
+
+
+**Train using weights based on half real distribution (0.005)**
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/multiscaleelevationpercentile/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/maximal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/multiscale_stdon/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/256/everything5/ --weighting="0.005,1" --seed=40 --epochs=100 --batch_size=16 --classes=0,1
+
+
+Evaluate weights based on half real distribution (0.005)
+
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/multiscaleelevationpercentile/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/maximal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/multiscale_stdon/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/256/everything5/trained.h5 /workspace/data/logfiles/256/everything5/eval.csv --selected_imgs=/workspace/data/logfiles/256/everything5/valid_imgs.txt --classes=0,1
+
+last try to see if something changes. superlow weights at 0.001
+
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/multiscaleelevationpercentile/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/maximal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/multiscale_stdon/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/256/everything6/ --weighting="0.001,1" --seed=40 --epochs=100 --batch_size=16 --classes=0,1
+
+
+Evaluate weights based on half real distribution (0.005)
+
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/multiscaleelevationpercentile/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/maximal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/multiscale_stdon/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/256/everything6/trained.h5 /workspace/data/logfiles/256/everything6/eval.csv --selected_imgs=/workspace/data/logfiles/256/everything6/valid_imgs.txt --classes=0,1
+
+
+
+
+
+
+
+
 
 
 ## Evaluate U-net
     python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/multiscaleelevationpercentile/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/pits/pits9/trained.h5 /workspace/data/logfiles/pits/pits11/eval.csv --selected_imgs=/workspace/data/logfiles/pits/pits11/valid_imgs.txt --classes=0,1
  
-EVAL WITHOUT DEPTINSINK AND MULTISCALEELEVATIONPERCENTILE
-
-    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/maxelevationdeviation/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/pits/pits12/trained.h5 /workspace/data/logfiles/pits/pits12/eval.csv --selected_imgs=/workspace/data/logfiles/pits/pits12/valid_imgs.txt --classes=0,1
-
-without MULTISCALEELEVATIONPERCENTILE batch size 4 good
-
-    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/pits/pits13/trained.h5 /workspace/data/logfiles/pits/pits13/eval.csv --selected_imgs=/workspace/data/logfiles/pits/pits13/valid_imgs.txt --classes=0,1
-
-without MULTISCALEELEVATIONPERCENTILE batch size 4 weights real
-
-    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/pits/pits15/trained.h5 /workspace/data/logfiles/pits/pits15/eval.csv --selected_imgs=/workspace/data/logfiles/pits/pits15/valid_imgs.txt --classes=0,1
-
 
 ## Inference U-net on test chips
     python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/hillshade/ -I /workspace/data/test_data_pits/maxelevationdeviation/ -I /workspace/data/test_data_pits/multiscaleelevationpercentile/ -I /workspace/data/test_data_pits/minimal_curvature/ -I /workspace/data/test_data_pits/maximal_curvature/ -I /workspace/data/test_data_pits/profile_curvature/ -I /workspace/data/test_data_pits/stdon/ -I /workspace/data/test_data_pits/multiscale_stdon/ -I /workspace/data/test_data_pits/elevation_above_pit/ -I /workspace/data/test_data_pits/depthinsink/ /workspace/data/logfiles/pits/everything1/trained.h5 /workspace/data/test_data_pits/inference/
 
-EVAL WITHOUT DEPTINSINK AND MULTISCALEELEVATIONPERCENTILE
-
-    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/hillshade/ -I /workspace/data/test_data_pits/elevation_above_pit/ -I /workspace/data/test_data_pits/stdon/ -I /workspace/data/test_data_pits/minimal_curvature/ -I /workspace/data/test_data_pits/profile_curvature/ -I /workspace/data/test_data_pits/maxelevationdeviation/ /workspace/data/logfiles/pits/pits12/trained.h5 /workspace/data/test_data_pits/inference/
-
-without MULTISCALEELEVATIONPERCENTILE batch size 16
-
-    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/hillshade/ -I /workspace/data/test_data_pits/elevation_above_pit/ -I /workspace/data/test_data_pits/stdon/ -I /workspace/data/test_data_pits/minimal_curvature/ -I /workspace/data/test_data_pits/profile_curvature/ -I /workspace/data/test_data_pits/maxelevationdeviation/ -I /workspace/data/test_data_pits/depthinsink/ /workspace/data/logfiles/pits/pits13/trained.h5 /workspace/data/test_data_pits/inference/
-
-without MULTISCALEELEVATIONPERCENTILE batch size 16 bad
-
-    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/hillshade/ -I /workspace/data/test_data_pits/elevation_above_pit/ -I /workspace/data/test_data_pits/stdon/ -I /workspace/data/test_data_pits/minimal_curvature/ -I /workspace/data/test_data_pits/profile_curvature/ -I /workspace/data/test_data_pits/maxelevationdeviation/ -I /workspace/data/test_data_pits/depthinsink/ /workspace/data/logfiles/pits/pits14/trained.h5 /workspace/data/test_data_pits/inference/
-
-
-without MULTISCALEELEVATIONPERCENTILE batch size 4 weights real
-
-    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/test_data_pits/hillshade/ -I /workspace/data/test_data_pits/elevation_above_pit/ -I /workspace/data/test_data_pits/stdon/ -I /workspace/data/test_data_pits/minimal_curvature/ -I /workspace/data/test_data_pits/profile_curvature/ -I /workspace/data/test_data_pits/maxelevationdeviation/ -I /workspace/data/test_data_pits/depthinsink/ /workspace/data/logfiles/pits/pits15/trained.h5 /workspace/data/test_data_pits/inference/
 
 ## Post-processing U-net
 
@@ -384,7 +405,7 @@ Inference
     python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies/hillshade/ -I /workspace/data/demo_area/topographical_indicies/maxelevationdeviation/ -I /workspace/data/demo_area/topographical_indicies/multiscaleelevationpercentile/ -I /workspace/data/demo_area/topographical_indicies/minimal_curvature/ -I /workspace/data/demo_area/topographical_indicies/maximal_curvature/ -I /workspace/data/demo_area/topographical_indicies/profile_curvature/ -I /workspace/data/demo_area/topographical_indicies/stdon/ -I /workspace/data/demo_area/topographical_indicies/multiscale_stdon/ -I /workspace/data/demo_area/topographical_indicies/elevation_above_pit/ -I /workspace/data/demo_area/topographical_indicies/depthinsink/ /workspace/data/logfiles/pits/everything1/trained.h5 /workspace/data/demo_area/topographical_indicies/inference/
 
 post processing
-    python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/demo_area/topographical_indicies/inference/ /workspace/data/demo_area/topographical_indicies/inference_post_processed/ polygon --min_area=9 --min_ratio=-0.6
+    python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/demo_area/topographical_indicies/inference/ /workspace/data/demo_area/topographical_indicies/inference_post_processed/ --output_type=polygon --min_area=9 --min_ratio=-0.6
 
 
 

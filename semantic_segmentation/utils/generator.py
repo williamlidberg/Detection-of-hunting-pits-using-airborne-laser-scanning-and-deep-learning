@@ -248,7 +248,6 @@ class DataGenerator(tf.keras.utils.Sequence):
         weights = []
 
         for img_paths, gt_path in batch:
-            # gt = cv2.imread(gt_path, cv2.IMREAD_GRAYSCALE)
             gt = tifffile.imread(gt_path)
 
             if self.augment:
@@ -266,11 +265,9 @@ class DataGenerator(tf.keras.utils.Sequence):
             # Create input image with containing all provided bands
             tmp = np.zeros(self.input_shape)
             for i, img_path in enumerate(img_paths):
-                # img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
                 img = tifffile.imread(img_path)
                 if self.augment:
                     img = self.apply_transform(img, flip, transform)
-                # img = img.astype(np.float32) / 255.
                 img = img.astype(np.float32)
                 tmp[:, :, i] = img
             X.append(tmp)
