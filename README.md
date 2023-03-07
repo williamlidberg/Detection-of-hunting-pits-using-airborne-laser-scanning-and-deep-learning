@@ -160,7 +160,7 @@ Bounding boxes can be created from segmentation masks if each object has a uniqe
 
 **Convert selected segmentation masks to bounding boxes**
 
-Use the object detection docker image to create bounding boxes. copy relevant tiles first?
+Use the object detection docker image to create bounding boxes.
 
     docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar detection:latest
 
@@ -177,80 +177,48 @@ failed at file  16686.tif
 failed at file  19763.tif
 
 
-Due to the mirroring of chips when splitting tiles I ended up with some strange examples where the bounding box streches over both mirrored pits. These chips were moved to:Y:\William\Projects\Cultural_remains\data\object_detection\strange_boxes and Y:\William\Projects\Cultural_remains\data\object_detection\strange_boxes_1m. Copy correct labeled chips to new directories. Use YoloBBoxChecker to inspect bounding boxes. Put split images with labaled pixels and bounding boxes in the same directory and change paths in YoloBBoxChecker\main.py
+Due to the mirroring of chips when splitting tiles I ended up with some strange examples where the bounding box streches over both mirrored pits. These chips were moved to:Y:\William\Projects\Cultural_remains\data\object_detection\strange_boxes and Y:\William\Projects\Cultural_remains\data\object_detection\strange_boxes_1m. Copy correct labeled chips to new directories. Use YoloBBoxChecker to inspect bounding boxes. Put split images with labaled pixels and bounding boxes in the same directory (/workspace/data/object_detection/inspect_bounding_boxes/in/) and change paths in YoloBBoxChecker/main.py
 
     python /workspace/code/object_detection/YoloBBoxChecker/main.py
 
-    python /workspace/code/tools/delete_misslabeled_chips.py /workspace/data/final_data/all /workspace/data/object_detection/strange_boxes/
+Manually move files with strange bounding boxes to data\object_detection\strange_boxes or data\object_detection\strange_boxes_1m depending on the resolution
 
-    python /workspace/code/tools/delete_misslabeled_chips.py /workspace/data/final_data/all /workspace/data/object_detection/strange_boxes_1m/
 
-copy matching bounding boxes to final directory:
-    import os
-    import shutil
+**copy image chips and bounding boxes to the final directory**
+    python /workspace/code/tools/copy_correct_chips.py /workspace/data/split_data_pits/  /workspace/data/object_detection/bounding_boxes/ /workspace/data/final_data/training/
 
-    labels = 'Y:/William/Projects/Cultural_remains/data/final_data/all/labels/'
-    boxes = 'Y:/William/Projects/Cultural_remains/data/final_data/training_labaled/bounding_boxes/'
-    copy_boxes = 'Y:/William/Projects/Cultural_remains/data/final_data/all/bounding_boxes/'
-    for file in os.listdir(labels):
-    inbox = boxes + file.replace('.tif', '.txt')
-    outbox = copy_boxes + file.replace('.tif', '.txt')
-    shutil.copy(inbox, outbox)
+    python /workspace/code/tools/copy_correct_chips.py /workspace/data/split_data_pits_1m/  /workspace/data/object_detection/bounding_boxes_1m/ /workspace/data/final_data_1m/training/
 
-The following chips are missing and have to be removed from te final data.
-22135.tif
-63165.tif
-63166.tif
-78220.tif
-
-python /workspace/code/tools/delete_misslabeled_chips.py /workspace/data/final_data/all /workspace/data/object_detection/strange_tiles/
 
 **Create data split and move test data to new directories**
-The batch script partition_data.sh cleans the test data directories and moves the test chips to respective test directory using the split created above. Run it with ./code/partition_data.sh 
+create data split between training and testing using this script. The batch script partition_data.sh cleans the test data directories and moves the test chips to respective test directory using a 80% vs 20% train / test split. Run it with:
     
     ./code/partition_data.sh
 
+    ./code/partition_data_1m.sh
 
-
-**Partition training data**\
- The data is split into training data, testing data and validation data. The traning data will be used to train the model and validation data will be used to experiment while the testing data is held for the final results. The datasplit was already done during the segmentation and will be reused for the object detection.
-
-
-        ./code/partition_data.sh
-
-
-**Select training chips to match segmentation chips**
-    python /workspace/code/object_detection/select_chips_with_labels.py /workspace/data/final_data/training/labels/ /workspace/data/object_detection/split_segmentations_masks/ /workspace/data/object_detection/selected_detection_masks_for_training/
-
-**Select testing chips to match segmentation chips**
-    python /workspace/code/object_detection/select_chips_with_labels.py /workspace/data/test_data_pits/labels/ /workspace/data/object_detection/split_segmentations_masks/ /workspace/data/object_detection/selected_detection_masks_for_testing/
-
-**Convert selected segmentation masks to bounding boxes**
-Use the object detection docker image to create bounding boxes
-
-    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar detection:latest
-**training chips**
-
-    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/selected_detection_masks_for_training/ 256 1 /workspace/data/final_data/training/bounding_boxes/
-
-**testing chips**
-
-    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/selected_detection_masks_for_testing/ 256 1 /workspace/data/test_data_pits/bounding_boxes/
-
-
-These training tiles had pits on the edges and could not be converted to bounding boxes for partly unknown reasons: 
-63165.tif
-63166.tif
-78220.tif
 
 
 **count labeled pixels**
 
-    python /workspace/code/tools/count_labeled_pixels.py /workspace/data/final_data//training/labels/
+    python /workspace/code/tools/count_labeled_pixels.py /workspace/data/final_data/training/labels/
 
-1.1 % of all pixles in the chips are labaled as hunting pits. Try to use this to set weights to 0.011 
+    python /workspace/code/tools/count_labeled_pixels.py /workspace/data/final_data_1m/training/labels/
+
+1.16 % of all pixles in the chips are labaled as hunting pits in the 0.5m data and 0.45 % in the 1m data.
+
 
 # Train and evaluate Unet on individual indicies
+
+# Test on empty images
+**Hillshade**
+
+    mkdir /workspace/data/logfiles/05m/hillshade1/
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/split_data_pits_1m/hillshade/ /workspace/data/split_data_pits_1m/labels/ /workspace/data/logfiles/05m/hillshade1/ --weighting="mfb" --seed=40 --epochs=100 --batch_size=16 --classes=0,1
+
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/split_data_pits_1m/hillshade/ /workspace/data/split_data_pits_1m/labels/ /workspace/data/logfiles/05m/hillshade1/trained.h5 /workspace/data/logfiles/05m/hillshade1/eval.csv --selected_imgs=/workspace/data/logfiles/05m/hillshade1/valid_imgs.txt --classes=0,1
+
+
 
 **Hillshade**
 run batchscript with ./code/train_test_unet.sh
@@ -343,7 +311,7 @@ last try to see if something changes. superlow weights at 0.001
     python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/multiscaleelevationpercentile/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/maximal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/multiscale_stdon/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/256/everything6/ --weighting="0.001,1" --seed=40 --epochs=100 --batch_size=16 --classes=0,1
 
 
-Evaluate weights based on half real distribution (0.005)
+Evaluate weights based on superlow weights at 0.001
 
     python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data/training/hillshade/ -I /workspace/data/final_data/training/maxelevationdeviation/ -I /workspace/data/final_data/training/multiscaleelevationpercentile/ -I /workspace/data/final_data/training/minimal_curvature/ -I /workspace/data/final_data/training/maximal_curvature/ -I /workspace/data/final_data/training/profile_curvature/ -I /workspace/data/final_data/training/stdon/ -I /workspace/data/final_data/training/multiscale_stdon/ -I /workspace/data/final_data/training/elevation_above_pit/ -I /workspace/data/final_data/training/depthinsink/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/256/everything6/trained.h5 /workspace/data/logfiles/256/everything6/eval.csv --selected_imgs=/workspace/data/logfiles/256/everything6/valid_imgs.txt --classes=0,1
 
