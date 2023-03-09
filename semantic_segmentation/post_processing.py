@@ -1,6 +1,7 @@
 import os
 import argparse
 import shutil
+import tifffile
 import whitebox
 wbt = whitebox.WhiteboxTools()
 from osgeo import ogr
@@ -79,17 +80,32 @@ def main(temp_dir, input_path, output_type, output_predictions, min_area, min_ra
         vector_to_raster = os.path.join(temp_dir,'{}.{}'.format(img_name, 'tif'))
         post_processed_prediction = os.path.join(output_predictions,'{}.{}'.format(img_name, 'tif'))
         post_processed_prediction_polygon = os.path.join(output_predictions,'{}.{}'.format((img_name + 'filtered'), 'shp'))
-        
-        raster_to_polygon(img_path, vector_polygons)
-        calculate_attributes(vector_polygons)
-        if output_type == 'polygon':
-            delete_features(vector_polygons, min_area, min_ratio, post_processed_prediction_polygon)
-        elif output_type == 'raster':
-            delete_features(vector_polygons, min_area, min_ratio, vector_polygons_processed)
-            polygon_to_raster(img_path, vector_polygons_processed, vector_to_raster)
-            raster_to_binary(vector_to_raster, post_processed_prediction)
 
-        
+        chip = tifffile.imread(img_path)
+        num_ones = (chip == 1).sum()
+        if num_ones == 0:
+            print(img_path,' had no predicted labels')
+            raster_to_binary(img_path, post_processed_prediction)
+            
+        else:
+            raster_to_polygon(img_path, vector_polygons)
+            calculate_attributes(vector_polygons)
+            if output_type == 'polygon':
+                delete_features(vector_polygons, min_area, min_ratio, post_processed_prediction_polygon)
+            elif output_type == 'raster':
+                delete_features(vector_polygons, min_area, min_ratio, vector_polygons_processed)
+                polygon_to_raster(img_path, vector_polygons_processed, vector_to_raster)
+                raster_to_binary(vector_to_raster, post_processed_prediction)
+                
+    original_list = os.listdir(input_path)
+    post_processed_list = os.listdir(output_predictions)
+    for chip in original_list:
+      if chip not in post_processed_list:
+        org = input_path + chip
+        post = output_predictions + chip
+        shutil.copy(org, post)
+      
+    
 
 if __name__ == '__main__':
     import argparse
