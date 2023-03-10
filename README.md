@@ -216,6 +216,10 @@ The training and evaluation of test chips can be done with these two batch scrip
     ./code/semantic_segmentation/train_test_unet_1m.sh
 
 
+# Test augmentation
+        mkdir /workspace/data/logfiles/05m/hillshade3/
+        python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data/training/hillshade/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/05m/hillshade3/ --weighting="mfb" --seed=42 --epochs=100 --batch_size=16 --classes=0,1
+        python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data/testing/hillshade/ /workspace/data/final_data/testing/labels/ /workspace/data/logfiles/05m/hillshade3/trained.h5 /workspace/data/logfiles/05m/hillshade3/test.csv --classes=0,1
 
 
 

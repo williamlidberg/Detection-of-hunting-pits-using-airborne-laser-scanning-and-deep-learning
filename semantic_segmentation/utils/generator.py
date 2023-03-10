@@ -68,6 +68,7 @@ class DataGenerator(tf.keras.utils.Sequence):
         self.input_shape = in_shpe
 
         self.rng = np.random.default_rng(seed)
+ 
         self.selected = self.__select_imgs(self.paths, size, include, exclude,
                                            self.rng)
         # set class weights
@@ -255,6 +256,7 @@ class DataGenerator(tf.keras.utils.Sequence):
                 flip = None
                 # select = self.rng.integers(0, 2, 3)
                 select = self.rng.integers(0, 2, 2)
+
                 if select[0]:
                     flip = self.choose_flip_augmentation(self.rng)
                 if select[1]:
@@ -322,10 +324,12 @@ class DataGenerator(tf.keras.utils.Sequence):
         return transform_matrix
 
     def apply_transform(self, img, flip, transform, gt=False):
-        if transform is None:
-            return self.__flip_img(img, flip)
-        else:
-            return self.__warp_img(img, transform, gt)
+        if flip is not None:
+            img = self.__flip_img(img, flip)
+        if transform is not None:
+            img = self.__warp_img(img, transform, gt)
+
+        return img
 
     def __warp_img(self, img, transform, gt):
         y, x = img.shape[:2]
