@@ -24,6 +24,8 @@ def calculate_metrics(results, pred, gt, i):
                ('{}_acc', sklearn.metrics.accuracy_score),
                ('{}_rec', sklearn.metrics.recall_score),
                ('{}_jacc', sklearn.metrics.jaccard_score)]
+                                                            
+               #('{}_map', sklearn.metrics.average_precision_score)]
 
     for name, func in metrics:
         results.setdefault(name.format(i), []).append(func(gt, pred))

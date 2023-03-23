@@ -57,7 +57,8 @@ You can run the container in the background with screen
 
     screen -S segmentation
 
-    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar segmentation:latest
+    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data segmentation:latest
+
 
 # Training data
 The training data were collected from multiple sources. Historical forest maps from local archives where digitized and georeferenced. Open data from the [swedish national heritage board were downloaded and digitized](https://pub.raa.se/). All remains where referenced with the liDAR data in order to match the reported remain to the LiDAR data. In total x hunting pits where manually digitized and corrected this way.
@@ -77,6 +78,9 @@ Then Create a shapefile tile index of all laz tiles in the pooled directory
 Use the shapefile tile index and a shapefile of all field data to create a polygon that can be used to select and copy relevant laz tilesto a new directory
 
     python /workspace/code/tools/copy_laz_tiles.py /workspace/data/footprint.shp /workspace/code/data/Hunting_pits_covered_by_lidar.shp /workspace/lidar/pooled_laz_files/ /workspace/data/selected_lidar_tiles_pits/
+
+    python /workspace/code/tools/copy_laz_tiles.py /workspace/data/footprint.shp /workspace/data/hubb/stand.shp /workspace/lidar/pooled_laz_files/ /workspace/data/hubb/selected/
+
 
 Finally use whitebox tools to create digital elevation models from the selected lidar data
 **Training and testing areas**
@@ -197,7 +201,16 @@ create data split between training and testing using this script. The batch scri
 
     ./code/partition_data_1m.sh
 
-
+Test one
+multiscale_stdon1 = nan
+profile_curvature = nan
+maxelevationdeviaiton = nan
+hillshade1 = 0.39
+depthinsink1 = 0.38
+Elevation_above_pit1 = 0
+Maximal_curvature1 = 0.4
+Minimal_curvature1 = 0.27
+Multiscaleelevationpercentile1 = nan
 
 **count labeled pixels**
 
@@ -211,15 +224,19 @@ create data split between training and testing using this script. The batch scri
 # Train and evaluate Unet
 The training and evaluation of test chips can be done with these two batch scripts: 
 
-    ./code/semantic_segmentation/train_test_unet_05m.sh
+./workspace/code/semantic_segmentation/train_test_unet_05m.sh
+./workspace/code/semantic_segmentation/train_test_unet_1m.sh
 
-    ./code/semantic_segmentation/train_test_unet_1m.sh
+
+./semantic_segmentation/train_test_unet_05m.sh
+
+./train_test_unet_1m.sh
 
 
-# Test augmentation
-        mkdir /workspace/data/logfiles/05m/hillshade3/
-        python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data/training/hillshade/ /workspace/data/final_data/training/labels/ /workspace/data/logfiles/05m/hillshade3/ --weighting="mfb" --seed=42 --epochs=100 --batch_size=16 --classes=0,1
-        python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data/testing/hillshade/ /workspace/data/final_data/testing/labels/ /workspace/data/logfiles/05m/hillshade3/trained.h5 /workspace/data/logfiles/05m/hillshade3/test.csv --classes=0,1
+to mount local files run the container with
+
+    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /home/william/AI:/workspace/data -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data/logfiles:/workspace/logfiles/ segmentation:latest
+
 
 
 
@@ -234,9 +251,15 @@ The training and evaluation of test chips can be done with these two batch scrip
 Extrat dems
     python /workspace/code/tools/laz_to_dem.py /workspace/data/demo_area/tiles/ /workspace/data/demo_area/dem_tiles/ 0.5
 
+    python /workspace/code/tools/laz_to_dem.py /workspace/data/demo_area/tiles/ /workspace/data/demo_area/dem_tiles_1m/ 1.0
+
 Calculate topoindicies
 
     python /workspace/code/Extract_topographcical_indices.py /workspace/temp/ /workspace/data/demo_area/dem_tiles/ /workspace/data/demo_area/topographical_indicies/hillshade/ /workspace/data/demo_area/topographical_indicies/maxelevationdeviation/ /workspace/data/demo_area/topographical_indicies/multiscaleelevationpercentile/ /workspace/data/demo_area/topographical_indicies/minimal_curvature/ /workspace/data/demo_area/topographical_indicies/maximal_curvature/ /workspace/data/demo_area/topographical_indicies/profile_curvature/ /workspace/data/demo_area/topographical_indicies/stdon/ /workspace/data/demo_area/topographical_indicies/multiscale_stdon/ /workspace/data/demo_area/topographical_indicies/elevation_above_pit/ /workspace/data/demo_area/topographical_indicies/depthinsink/
+
+    python /workspace/code/Extract_topographcical_indices.py /workspace/temp/ /workspace/data/demo_area/dem_tiles_1m/ /workspace/data/demo_area/topographical_indicies_1m/hillshade/ /workspace/data/demo_area/topographical_indicies_1m/maxelevationdeviation/ /workspace/data/demo_area/topographical_indicies_1m/multiscaleelevationpercentile/ /workspace/data/demo_area/topographical_indicies_1m/minimal_curvature/ /workspace/data/demo_area/topographical_indicies_1m/maximal_curvature/ /workspace/data/demo_area/topographical_indicies_1m/profile_curvature/ /workspace/data/demo_area/topographical_indicies_1m/stdon/ /workspace/data/demo_area/topographical_indicies_1m/multiscale_stdon/ /workspace/data/demo_area/topographical_indicies_1m/elevation_above_pit/ /workspace/data/demo_area/topographical_indicies_1m/depthinsink/
+
+
 
 Inference
     python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies/hillshade/ -I /workspace/data/demo_area/topographical_indicies/maxelevationdeviation/ -I /workspace/data/demo_area/topographical_indicies/multiscaleelevationpercentile/ -I /workspace/data/demo_area/topographical_indicies/minimal_curvature/ -I /workspace/data/demo_area/topographical_indicies/maximal_curvature/ -I /workspace/data/demo_area/topographical_indicies/profile_curvature/ -I /workspace/data/demo_area/topographical_indicies/stdon/ -I /workspace/data/demo_area/topographical_indicies/multiscale_stdon/ -I /workspace/data/demo_area/topographical_indicies/elevation_above_pit/ -I /workspace/data/demo_area/topographical_indicies/depthinsink/ /workspace/data/logfiles/pits/everything1/trained.h5 /workspace/data/demo_area/topographical_indicies/inference/

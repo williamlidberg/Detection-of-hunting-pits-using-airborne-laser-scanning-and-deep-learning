@@ -7,9 +7,11 @@ import utils.loss
 import utils.metric
 import tensorflow as tf
 
-
 UNET_MODES = ['default', 'wo_entry']
 
+
+# UNETS = {'XceptionUNet': utils.unet.XceptionUNet,
+#          'UNet': utils.unet.UNet}
 
 def write_dataset(selected, log_path, name):
     with open(os.path.join(log_path, name), 'w') as f:
@@ -76,6 +78,7 @@ def main(img_path, gt_path, log_path, seed, epochs, depth, batch_size,
                                    classes=train_gen.class_num,
                                    entry_block=not band_wise)
     metrics = ['accuracy', tf.keras.metrics.Recall()]
+
     # record IoU for each class separately
     for i in range(train_gen.class_num):
         metrics.append(tf.keras.metrics.OneHotIoU(
@@ -105,15 +108,16 @@ def main(img_path, gt_path, log_path, seed, epochs, depth, batch_size,
                                         monitor='val_loss',
                                         save_weights_only=True,
                                         verbose=0, save_best_only=True),
-        tf.keras.callbacks.TensorBoard(log_dir=log_path, histogram_freq=5,
-                                       write_grads=True, batch_size=2,
-                                       write_images=True),
+        # tf.keras.callbacks.TensorBoard(log_dir=log_path, histogram_freq=5,
+        #                                write_grads=True, batch_size=2,
+        #                                write_images=True),
         tf.keras.callbacks.CSVLogger(os.path.join(log_path, 'log.csv'),
                                      append=True, separator=';')
     ]
     unet.model.fit_generator(train_gen, epochs=epochs, verbose=0,
                              callbacks=callbacks,
                              validation_data=valid_gen)
+
 
 
 if __name__ == '__main__':
