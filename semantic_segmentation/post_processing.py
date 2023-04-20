@@ -2,7 +2,11 @@ import os
 import argparse
 import shutil
 import tifffile
+import os
+os.environ["WBT_LINUX"] = "MUSL"
+#import whitebox
 import whitebox
+whitebox.download_wbt(linux_musl=True, reset=True)
 wbt = whitebox.WhiteboxTools()
 from osgeo import ogr
 import geopandas as gpd

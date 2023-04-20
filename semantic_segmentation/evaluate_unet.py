@@ -3,7 +3,7 @@ import utils.unet
 import numpy as np
 import pandas as pd
 import sklearn.metrics
-
+#import tensorflow_ranking as tfr
 
 def perf_measure(gt, pred):
     TP = np.sum(gt & pred)
@@ -24,6 +24,7 @@ def calculate_metrics(results, pred, gt, i):
                ('{}_acc', sklearn.metrics.accuracy_score),
                ('{}_rec', sklearn.metrics.recall_score),
                ('{}_jacc', sklearn.metrics.jaccard_score)]
+               #('{}_map', tfr.keras.metrics.MeanAveragePrecisionMetric)]
                                                             
                #('{}_map', sklearn.metrics.average_precision_score)]
 

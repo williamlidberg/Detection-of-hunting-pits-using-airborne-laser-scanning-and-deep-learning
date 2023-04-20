@@ -3,6 +3,7 @@ import argparse
 
 from attr import field
 import whitebox
+whitebox.download_wbt(linux_musl=True, reset=True)
 wbt = whitebox.WhiteboxTools()
 
 def convert_polygon_segmentation(base_file_path, input_observations,field, output_label_path):

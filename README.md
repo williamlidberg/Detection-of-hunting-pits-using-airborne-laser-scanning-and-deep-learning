@@ -57,7 +57,7 @@ You can run the container in the background with screen
 
     screen -S segmentation
 
-    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data segmentation:latest
+    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog/:/workspace/lidar segmentation:latest
 
 
 # Training data
@@ -79,7 +79,6 @@ Use the shapefile tile index and a shapefile of all field data to create a polyg
 
     python /workspace/code/tools/copy_laz_tiles.py /workspace/data/footprint.shp /workspace/code/data/Hunting_pits_covered_by_lidar.shp /workspace/lidar/pooled_laz_files/ /workspace/data/selected_lidar_tiles_pits/
 
-    python /workspace/code/tools/copy_laz_tiles.py /workspace/data/footprint.shp /workspace/data/hubb/stand.shp /workspace/lidar/pooled_laz_files/ /workspace/data/hubb/selected/
 
 
 Finally use whitebox tools to create digital elevation models from the selected lidar data
@@ -87,6 +86,8 @@ Finally use whitebox tools to create digital elevation models from the selected 
     python /workspace/code/tools/laz_to_dem.py /workspace/data/selected_lidar_tiles_pits/ /workspace/data/dem_tiles_pits/ 0.5
 
     python /workspace/code/tools/laz_to_dem.py /workspace/data/selected_lidar_tiles_pits/ /workspace/data/dem_tiles_pits_1m/ 1.0
+
+    python /workspace/code/tools/laz_to_dem.py /workspace/data/selected_lidar_tiles_pits/ /workspace/data/dem_tiles_pits_test/ 1.0
 
 <br/>
 
@@ -106,9 +107,9 @@ Training a model directly on the digital elevation model is not practical since 
 
 This script extracts the topographical indices and normalizes them between 0 and 1. This step takes around 30 seconds / tile. It would take about 26 days for Sweden on 0.5 m resolution.
 
-    python /workspace/code/Extract_topographcical_indices.py /workspace/temp/ /workspace/data/dem_tiles_pits/ /workspace/data/topographical_indices_normalized_pits/hillshade/ /workspace/data/topographical_indices_normalized_pits/maxelevationdeviation/ /workspace/data/topographical_indices_normalized_pits/multiscaleelevationpercentile/ /workspace/data/topographical_indices_normalized_pits/minimal_curvature/ /workspace/data/topographical_indices_normalized_pits/maximal_curvature/ /workspace/data/topographical_indices_normalized_pits/profile_curvature/ /workspace/data/topographical_indices_normalized_pits/stdon/ /workspace/data/topographical_indices_normalized_pits/multiscale_stdon/ /workspace/data/topographical_indices_normalized_pits/elevation_above_pit/ /workspace/data/topographical_indices_normalized_pits/depthinsink/
+    python /workspace/code/Extract_topographcical_indices_05m.py /workspace/temp/ /workspace/data/dem_tiles_pits/ /workspace/data/topographical_indices_normalized_pits/hillshade/ /workspace/data/topographical_indices_normalized_pits/maxelevationdeviation/ /workspace/data/topographical_indices_normalized_pits/multiscaleelevationpercentile/ /workspace/data/topographical_indices_normalized_pits/minimal_curvature/ /workspace/data/topographical_indices_normalized_pits/maximal_curvature/ /workspace/data/topographical_indices_normalized_pits/profile_curvature/ /workspace/data/topographical_indices_normalized_pits/stdon/ /workspace/data/topographical_indices_normalized_pits/multiscale_stdon/ /workspace/data/topographical_indices_normalized_pits/elevation_above_pit/ /workspace/data/topographical_indices_normalized_pits/depthinsink/
 
-    python /workspace/code/Extract_topographcical_indices.py /workspace/temp/ /workspace/data/dem_tiles_pits_1m/ /workspace/data/topographical_indices_normalized_pits_1m/hillshade/ /workspace/data/topographical_indices_normalized_pits_1m/maxelevationdeviation/ /workspace/data/topographical_indices_normalized_pits_1m/multiscaleelevationpercentile/ /workspace/data/topographical_indices_normalized_pits_1m/minimal_curvature/ /workspace/data/topographical_indices_normalized_pits_1m/maximal_curvature/ /workspace/data/topographical_indices_normalized_pits_1m/profile_curvature/ /workspace/data/topographical_indices_normalized_pits_1m/stdon/ /workspace/data/topographical_indices_normalized_pits_1m/multiscale_stdon/ /workspace/data/topographical_indices_normalized_pits_1m/elevation_above_pit/ /workspace/data/topographical_indices_normalized_pits_1m/depthinsink/
+    python /workspace/code/Extract_topographcical_indices_1m.py /workspace/temp/ /workspace/data/dem_tiles_pits_1m/ /workspace/data/topographical_indices_normalized_pits_1m/hillshade/ /workspace/data/topographical_indices_normalized_pits_1m/maxelevationdeviation/ /workspace/data/topographical_indices_normalized_pits_1m/multiscaleelevationpercentile/ /workspace/data/topographical_indices_normalized_pits_1m/minimal_curvature/ /workspace/data/topographical_indices_normalized_pits_1m/maximal_curvature/ /workspace/data/topographical_indices_normalized_pits_1m/profile_curvature/ /workspace/data/topographical_indices_normalized_pits_1m/stdon/ /workspace/data/topographical_indices_normalized_pits_1m/multiscale_stdon/ /workspace/data/topographical_indices_normalized_pits_1m/elevation_above_pit/ /workspace/data/topographical_indices_normalized_pits_1m/depthinsink/
     
 <img src="images/distribution.PNG" alt="Distribution of normalized topographical indicies" width="50%"/>\
 Distribution of the normalised topographical indices from one tile.
@@ -137,9 +138,9 @@ Each of the 2.5km x 2.5km dem tiles were Split into smaller image chips with the
 ```diff
 - Make sure the directory is empty/new so the split starts at 1 each time
 ```
-The bash script ./code/split_indices.sh will remove and create new directories and then run the splitting script on all indicies. Each 2.5 km x 2.5 km tile is split into image chips with the size 256 x 256 pixels.
+The bash script ./code/split_indices.sh will remove and create new directories and then run the splitting script on all indicies. Each 2.5 km x 2.5 km tile is split into image chips with the size 250 x 250 pixels.
 
-    ./code/split_indices.sh
+    ./code/split_indices_05m.sh
 
     ./code/split_indices_1m.sh
 
@@ -152,15 +153,13 @@ Bounding boxes can be created from segmentation masks if each object has a uniqe
 **Create new segmentation masks with uniqe ID**
 
 
-    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles_pits/ /workspace/code/data/Hunting_pits_covered_by_lidar.shp object_id /workspace/data/object_detection/segmentation_masks/hunting_pits/
-
-    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles_pits_1m/ /workspace/code/data/Hunting_pits_covered_by_lidar.shp object_id /workspace/data/object_detection/segmentation_masks/hunting_pits_1m/
+    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles_pits/ /workspace/code/data/Hunting_pits_covered_by_lidar.shp object_id /workspace/data/object_detection/segmentation_masks_tiles_05m/
+    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/dem_tiles_pits_1m/ /workspace/code/data/Hunting_pits_covered_by_lidar.shp object_id /workspace/data/object_detection/segmentation_masks_tiles_1m/
 
 **Split segmentation masks into chips**
 
-    python /workspace/code/tools/split_training_data.py /workspace/data/object_detection/segmentation_masks/hunting_pits/ /workspace/data/object_detection/split_segmentations_masks/ --tile_size 256
-
-    python /workspace/code/tools/split_training_data.py /workspace/data/object_detection/segmentation_masks/hunting_pits_1m/ /workspace/data/object_detection/split_segmentations_masks_1m/ --tile_size 256
+    python /workspace/code/tools/split_training_data.py /workspace/data/object_detection/segmentation_masks_tiles_05m/ /workspace/data/object_detection/split_segmentations_masks_05m/ --tile_size 250
+    python /workspace/code/tools/split_training_data.py /workspace/data/object_detection/segmentation_masks_tiles_1m/ /workspace/data/object_detection/split_segmentations_masks_1m/ --tile_size 250
 
 **Convert selected segmentation masks to bounding boxes**
 
@@ -168,28 +167,23 @@ Use the object detection docker image to create bounding boxes.
 
     docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar detection:latest
 
-    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/split_segmentations_masks/ 256 0 /workspace/data/object_detection/bounding_boxes/
-
-    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/split_segmentations_masks_1m/ 256 0 /workspace/data/object_detection/bounding_boxes_1m/
-
-The 1 m bounding boxes failed at the following chips:
-failed at file  5081.tif
-failed at file  12466.tif
-failed at file  14035.tif
-failed at file  14064.tif
-failed at file  16686.tif
-failed at file  19763.tif
+    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/split_segmentations_masks_05m/ 250 0 /workspace/data/object_detection/bounding_boxes_05m/
 
 
-Due to the mirroring of chips when splitting tiles I ended up with some strange examples where the bounding box streches over both mirrored pits. These chips were moved to:Y:\William\Projects\Cultural_remains\data\object_detection\strange_boxes and Y:\William\Projects\Cultural_remains\data\object_detection\strange_boxes_1m. Copy correct labeled chips to new directories. Use YoloBBoxChecker to inspect bounding boxes. Put split images with labaled pixels and bounding boxes in the same directory (/workspace/data/object_detection/inspect_bounding_boxes/in/) and change paths in YoloBBoxChecker/main.py
+failed at 18006.tif, 26039.tif, 
 
-    python /workspace/code/object_detection/YoloBBoxChecker/main.py
 
-Manually move files with strange bounding boxes to data\object_detection\strange_boxes or data\object_detection\strange_boxes_1m depending on the resolution
+    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/split_segmentations_masks_1m/ 250 0 /workspace/data/object_detection/bounding_boxes_1m/
+
+failed at 6214.tif 19707.tif    20079.tif
+
+
+
+
 
 
 **copy image chips and bounding boxes to the final directory**
-    python /workspace/code/tools/copy_correct_chips.py /workspace/data/split_data_pits/  /workspace/data/object_detection/bounding_boxes/ /workspace/data/final_data/training/
+    python /workspace/code/tools/copy_correct_chips.py /workspace/data/split_data_pits/  /workspace/data/object_detection/bounding_boxes_05m/ /workspace/data/final_data_05m/training/
 
     python /workspace/code/tools/copy_correct_chips.py /workspace/data/split_data_pits_1m/  /workspace/data/object_detection/bounding_boxes_1m/ /workspace/data/final_data_1m/training/
 
@@ -197,20 +191,10 @@ Manually move files with strange bounding boxes to data\object_detection\strange
 **Create data split and move test data to new directories**
 create data split between training and testing using this script. The batch script partition_data.sh cleans the test data directories and moves the test chips to respective test directory using a 80% vs 20% train / test split. Run it with:
     
-    ./code/partition_data.sh
-
+    ./code/partition_data_05m.sh
     ./code/partition_data_1m.sh
 
-Test one
-multiscale_stdon1 = nan
-profile_curvature = nan
-maxelevationdeviaiton = nan
-hillshade1 = 0.39
-depthinsink1 = 0.38
-Elevation_above_pit1 = 0
-Maximal_curvature1 = 0.4
-Minimal_curvature1 = 0.27
-Multiscaleelevationpercentile1 = nan
+    python /workspace/code/object_detection/YoloBBoxChecker/main.py
 
 **count labeled pixels**
 
@@ -222,6 +206,11 @@ Multiscaleelevationpercentile1 = nan
 
 
 # Train and evaluate Unet
+**Example**
+python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data_05m/training/hillshade/ /workspace/data/final_data_05m/training/labels/ /workspace/data/logfiles/test/ --weighting="mfb" --seed=1 --depth=2 --epochs=200 --batch_size=16 --classes=0,1
+python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data_05m/testing/hillshade/ /workspace/data/final_data_05m/testing/labels/ /workspace/data/logfiles/test/trained.h5 /workspace/data/logfiles/test/test.csv --classes=0,1 --depth=2
+
+
 The training and evaluation of test chips can be done with these two batch scripts: 
 
 ./workspace/code/semantic_segmentation/train_test_unet_05m.sh
@@ -238,6 +227,9 @@ to mount local files run the container with
     docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /home/william/AI:/workspace/data -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data/logfiles:/workspace/logfiles/ segmentation:latest
 
 
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data_1m/training/hillshade/ -I /workspace/data/final_data_1m/training/maxelevationdeviation/ -I /workspace/data/final_data_1m/training/minimal_curvature/ -I /workspace/data/final_data_1m/training/maximal_curvature/ -I /workspace/data/final_data_1m/training/profile_curvature/ -I /workspace/data/final_data_1m/training/stdon/ -I /workspace/data/final_data_1m/training/depthinsink/ /workspace/data/final_data_1m/training/labels/ /workspace/data/logfiles/test --weighting="mfb" --seed=1 --depth=2 --epochs=200 --batch_size=64 --classes=0,1
+    
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data_1m/testing/hillshade/ -I /workspace/data/final_data_1m/testing/maxelevationdeviation/ -I /workspace/data/final_data_1m/testing/minimal_curvature/ -I /workspace/data/final_data_1m/testing/maximal_curvature/ -I /workspace/data/final_data_1m/testing/profile_curvature/ -I /workspace/data/final_data_1m/testing/stdon/ -I /workspace/data/final_data_1m/testing/depthinsink/ /workspace/data/final_data_1m/testing/labels/ /workspace/data/logfiles/test/trained.h5 /workspace/data/logfiles/test/test.csv --classes=0,1 --depth=2
 
 
 ## Inference on demo area
@@ -252,6 +244,7 @@ Extrat dems
     python /workspace/code/tools/laz_to_dem.py /workspace/data/demo_area/tiles/ /workspace/data/demo_area/dem_tiles/ 0.5
 
     python /workspace/code/tools/laz_to_dem.py /workspace/data/demo_area/tiles/ /workspace/data/demo_area/dem_tiles_1m/ 1.0
+    python /workspace/code/tools/laz_to_dem.py /workspace/data/demo_area/tiles/ /workspace/data/demo_area/dem_tiles_test/ 1.0
 
 Calculate topoindicies
 
@@ -259,13 +252,14 @@ Calculate topoindicies
 
     python /workspace/code/Extract_topographcical_indices.py /workspace/temp/ /workspace/data/demo_area/dem_tiles_1m/ /workspace/data/demo_area/topographical_indicies_1m/hillshade/ /workspace/data/demo_area/topographical_indicies_1m/maxelevationdeviation/ /workspace/data/demo_area/topographical_indicies_1m/multiscaleelevationpercentile/ /workspace/data/demo_area/topographical_indicies_1m/minimal_curvature/ /workspace/data/demo_area/topographical_indicies_1m/maximal_curvature/ /workspace/data/demo_area/topographical_indicies_1m/profile_curvature/ /workspace/data/demo_area/topographical_indicies_1m/stdon/ /workspace/data/demo_area/topographical_indicies_1m/multiscale_stdon/ /workspace/data/demo_area/topographical_indicies_1m/elevation_above_pit/ /workspace/data/demo_area/topographical_indicies_1m/depthinsink/
 
-
+**Inference maximal curvature 05 m**
+    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies/maximal_curvature /workspace/data/logfiles/05m/maximal_curvature5/trained.h5 /workspace/data/demo_area/inference/inference_maximal_curvature_05m
 
 Inference
     python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies/hillshade/ -I /workspace/data/demo_area/topographical_indicies/maxelevationdeviation/ -I /workspace/data/demo_area/topographical_indicies/multiscaleelevationpercentile/ -I /workspace/data/demo_area/topographical_indicies/minimal_curvature/ -I /workspace/data/demo_area/topographical_indicies/maximal_curvature/ -I /workspace/data/demo_area/topographical_indicies/profile_curvature/ -I /workspace/data/demo_area/topographical_indicies/stdon/ -I /workspace/data/demo_area/topographical_indicies/multiscale_stdon/ -I /workspace/data/demo_area/topographical_indicies/elevation_above_pit/ -I /workspace/data/demo_area/topographical_indicies/depthinsink/ /workspace/data/logfiles/pits/everything1/trained.h5 /workspace/data/demo_area/topographical_indicies/inference/
 
 post processing
-    python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/demo_area/topographical_indicies/inference/ /workspace/data/demo_area/topographical_indicies/inference_post_processed/ --output_type=polygon --min_area=9 --min_ratio=-0.6
+    python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/demo_area/inference/inference_maximal_curvature_05m/ /workspace/data/demo_area/topographical_indicies/inference_post_processed/ --output_type=polygon --min_area=9 --min_ratio=-0.6
 
 
 
