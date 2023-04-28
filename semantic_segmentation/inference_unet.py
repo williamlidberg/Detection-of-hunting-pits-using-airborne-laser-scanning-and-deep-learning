@@ -193,7 +193,7 @@ if __name__ == '__main__':
     parser.add_argument('--tile_size', help='Tile size', type=int,
                         default=250)
     parser.add_argument('--margin', help='Margin', type=int, default=50)
-    parser.add_argument('--depth', help='UNet depth', type=int, default=2)
+    parser.add_argument('--depth', help='UNet depth', type=int, default=4)
     parser.add_argument('--class_num', help='Number of classes', type=int, default=2)
     # parser.add_argument('--unet_mode', choices=utils.unet.XceptionUNet.UNET_MODES,
     #                     default=utils.unet.XceptionUNet.UNET_MODES[0], 

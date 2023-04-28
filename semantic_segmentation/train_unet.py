@@ -1,6 +1,6 @@
 import os
 import logging
-
+import keras
 import utils.generator
 import utils.unet
 import utils.loss
@@ -87,7 +87,8 @@ def main(img_path, gt_path, log_path, seed, epochs, depth, batch_size,
                                             name='{}_iou'.format(i)))
     unet.model.compile(
                        # optimizer="rmsprop",
-                       optimizer="adam",
+                       optimizer=keras.optimizers.Adam(lr=0.001),
+                       #optimizer="adam",
                        # optimizer=tf.keras.optimizers.SGD(momentum=0.9),
                        #loss=tf.keras.losses.BinaryFocalCrossentropy(gamma=2.0, from_logits=True),
                        loss='binary_crossentropy',

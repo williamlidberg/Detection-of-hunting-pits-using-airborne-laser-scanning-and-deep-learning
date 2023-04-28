@@ -59,6 +59,10 @@ You can run the container in the background with screen
 
     docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog/:/workspace/lidar segmentation:latest
 
+on windows
+
+
+    docker run -it --gpus all -p 8888:8888 --mount type=bind,src=G:\moon\code,target=/workspace/code --mount type=bind,src=G:\moon\data,target=/workspace/data segmentation:latest
 
 # Training data
 The training data were collected from multiple sources. Historical forest maps from local archives where digitized and georeferenced. Open data from the [swedish national heritage board were downloaded and digitized](https://pub.raa.se/). All remains where referenced with the liDAR data in order to match the reported remain to the LiDAR data. In total x hunting pits where manually digitized and corrected this way.
@@ -187,6 +191,13 @@ failed at 6214.tif 19707.tif    20079.tif
 
     python /workspace/code/tools/copy_correct_chips.py /workspace/data/split_data_pits_1m/  /workspace/data/object_detection/bounding_boxes_1m/ /workspace/data/final_data_1m/training/
 
+Note: Some bounding boxes along the edges were removed before training. 
+
+
+    python /workspace/code/tools/drop_strange_boxes.py /workspace/data/final_data_05m/training/ /workspace/data/small_bounding_boxes/final_data_05m_filtered_training_boxes.txt
+    python /workspace/code/tools/drop_strange_boxes.py /workspace/data/final_data_05m/testing/ /workspace/data/small_bounding_boxes/final_data_05m_filtered_testing_boxes.txt
+    python /workspace/code/tools/drop_strange_boxes.py /workspace/data/final_data_1m/training/ /workspace/data/small_bounding_boxes/final_data_1m_filtered_training_boxes.txt
+    python /workspace/code/tools/drop_strange_boxes.py /workspace/data/final_data_1m/testing/ /workspace/data/small_bounding_boxes/final_data_1m_filtered_testing_boxes.txt
 
 **Create data split and move test data to new directories**
 create data split between training and testing using this script. The batch script partition_data.sh cleans the test data directories and moves the test chips to respective test directory using a 80% vs 20% train / test split. Run it with:
@@ -196,18 +207,10 @@ create data split between training and testing using this script. The batch scri
 
     python /workspace/code/object_detection/YoloBBoxChecker/main.py
 
-**count labeled pixels**
-
-    python /workspace/code/tools/count_labeled_pixels.py /workspace/data/final_data/training/labels/
-
-    python /workspace/code/tools/count_labeled_pixels.py /workspace/data/final_data_1m/training/labels/
-
-1.16 % of all pixles in the chips are labaled as hunting pits in the 0.5m data and 0.45 % in the 1m data.
-
 
 # Train and evaluate Unet
 **Example**
-python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data_05m/training/hillshade/ /workspace/data/final_data_05m/training/labels/ /workspace/data/logfiles/test/ --weighting="mfb" --seed=1 --depth=2 --epochs=200 --batch_size=16 --classes=0,1
+python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data_05m/training/hillshade/ /workspace/data/final_data_05m/training/labels/ /workspace/data/logfiles/test/ --weighting="mfb" --seed=1 --depth=2 --epochs=200 --batch_size=64 --classes=0,1
 python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data_05m/testing/hillshade/ /workspace/data/final_data_05m/testing/labels/ /workspace/data/logfiles/test/trained.h5 /workspace/data/logfiles/test/test.csv --classes=0,1 --depth=2
 
 
@@ -217,9 +220,13 @@ The training and evaluation of test chips can be done with these two batch scrip
 ./workspace/code/semantic_segmentation/train_test_unet_1m.sh
 
 
-./semantic_segmentation/train_test_unet_05m.sh
+**find batch size**
 
-./train_test_unet_1m.sh
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data_05m/training/maximal_curvature/ /workspace/data/final_data_05m/training/labels/ /workspace/data/logfiles/05m/maximal_curvature7/ --weighting="mfb" --seed=2 --depth=4 --epochs=200 --batch_size=64 --classes=0,1
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data_05m/testing/maximal_curvature/ /workspace/data/final_data_05m/testing/labels/ /workspace/data/logfiles/05m/maximal_curvature7/trained.h5 /workspace/data/logfiles/05m/maximal_curvature7/test.csv --classes=0,1 --depth=4
+
+
+
 
 
 to mount local files run the container with
@@ -253,7 +260,12 @@ Calculate topoindicies
     python /workspace/code/Extract_topographcical_indices.py /workspace/temp/ /workspace/data/demo_area/dem_tiles_1m/ /workspace/data/demo_area/topographical_indicies_1m/hillshade/ /workspace/data/demo_area/topographical_indicies_1m/maxelevationdeviation/ /workspace/data/demo_area/topographical_indicies_1m/multiscaleelevationpercentile/ /workspace/data/demo_area/topographical_indicies_1m/minimal_curvature/ /workspace/data/demo_area/topographical_indicies_1m/maximal_curvature/ /workspace/data/demo_area/topographical_indicies_1m/profile_curvature/ /workspace/data/demo_area/topographical_indicies_1m/stdon/ /workspace/data/demo_area/topographical_indicies_1m/multiscale_stdon/ /workspace/data/demo_area/topographical_indicies_1m/elevation_above_pit/ /workspace/data/demo_area/topographical_indicies_1m/depthinsink/
 
 **Inference maximal curvature 05 m**
-    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies/maximal_curvature /workspace/data/logfiles/05m/maximal_curvature5/trained.h5 /workspace/data/demo_area/inference/inference_maximal_curvature_05m
+    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies/maximal_curvature /workspace/data/logfiles/05m/maximal_curvature1/trained.h5 /workspace/data/demo_area/inference/inference_maximal_curvature_05m2
+
+
+    post processing
+        python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/demo_area/inference/inference_maximal_curvature_05m2/ /workspace/data/demo_area/inference_post_processed/ --output_type=polygon --min_area=9 --min_ratio=-0.5
+
 
 Inference
     python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies/hillshade/ -I /workspace/data/demo_area/topographical_indicies/maxelevationdeviation/ -I /workspace/data/demo_area/topographical_indicies/multiscaleelevationpercentile/ -I /workspace/data/demo_area/topographical_indicies/minimal_curvature/ -I /workspace/data/demo_area/topographical_indicies/maximal_curvature/ -I /workspace/data/demo_area/topographical_indicies/profile_curvature/ -I /workspace/data/demo_area/topographical_indicies/stdon/ -I /workspace/data/demo_area/topographical_indicies/multiscale_stdon/ -I /workspace/data/demo_area/topographical_indicies/elevation_above_pit/ -I /workspace/data/demo_area/topographical_indicies/depthinsink/ /workspace/data/logfiles/pits/everything1/trained.h5 /workspace/data/demo_area/topographical_indicies/inference/
@@ -262,6 +274,9 @@ post processing
     python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/demo_area/inference/inference_maximal_curvature_05m/ /workspace/data/demo_area/topographical_indicies/inference_post_processed/ --output_type=polygon --min_area=9 --min_ratio=-0.6
 
 
+**convert test chips to polygon**
+
+    python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/demo_area/inference/inference_maximal_curvature_05m2/ /workspace/data/demo_area/inference_post_processed/ --output_type=polygon --min_area=9 --min_ratio=-0.5
 
 
 
@@ -290,22 +305,7 @@ This section uses the docker container tagged "detection". the segmentation cont
 
     
 
-## Train YOLO
-This part is adapted from https://github.com/ultralytics/yolov5
 
-Use the official docker image
-    
-    docker pull ultralytics/yolov5
-
-    docker run -it --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data/object_detection/bounding_boxes/partitioned_data:/workspace/data ultralytics/yolov5:latest
-
-Train the model
-
-    python /workspace/code/object_detection/yolov5/train.py --img 512 --cfg yolov5s.yaml --hyp /workspace/code/object_detection/yolov5/data/hyps/hyp.cultural_hillshade.yaml --batch 16 --epochs 10 --data /workspace/code/object_detection/yolov5/data/cultural_data.yaml --weights yolov5s.pt --workers 24 --name yolo_cultural_one
-
-## Evaluate YOLO
-
-## Inference YOLO
 
 # Transfer learning
 
@@ -325,27 +325,7 @@ The charcoal kilns in the trainig data were between x and y pixels with an avera
     2. They have to be about the same size range as charcoal kilns in number of pixels.
     3. min and max lat and log values to avoid deformed craters?
 
-## Craters to segmentation masks    
 
-## Craters to bounding boxes
-
-# Old notes
-
-
-## Train model - test with hillshade only  
-log 34 was trained on only hillshades and got mcc 0.85  
-log 35 was trained on only hpmf and got mcc 0  
-log 36 was trained on only slope and got mcc 0  
-
-hpmf and slope did not work. normalise?  
-log 42 was trained on normalized hillshade images. average mcc0.72 total mcc 0.84  
-log44 was trained on normalised slope  
-**train the model without CRF**  
-    python Y:/William/GitHub/Remnants-of-charcoal-kilns/train.py Y:/William/Kolbottnar/data/selected_data/hillshade/ Y:/William/Kolbottnar/data/selected_data/labels/ Y:/William/Kolbottnar/logs/log42 XceptionUNet --seed=40 
-
-hpmf  
-
-    python Y:/William/GitHub/Remnants-of-charcoal-kilns/train.py Y:/William/Kolbottnar/data/selected_data/hpmf/ Y:/William/Kolbottnar/data/selected_data/labels/ Y:/William/Kolbottnar/logs/log43 XceptionUNet --seed=40 
 
 ## Evaluate model
     python Y:/William/GitHub/Remnants-of-charcoal-kilns/evaluate_model.py Y:/William/Kolbottnar/data/selected_data/hillshade/ Y:/William/Kolbottnar/data/selected_data/labels/ Y:/William/Kolbottnar/logs/log43/valid_imgs.txt Y:/William/Kolbottnar/logs/log43/test.h5 Y:/William/Kolbottnar/logs/log43/evaluation.csv --wo_crf
@@ -359,24 +339,49 @@ hpmf
 
     python Y:/William/GitHub/Remnants-of-charcoal-kilns/post_processing.py D:/kolbottnar/inference/34_inference/ D:/kolbottnar/inference/34_post_processing/raw_polygons/ D:/kolbottnar/inference/34_post_processing/filtered_polygons/ --min_area=400 --min_ratio=-0.3
  
-# Notes
 
-This script needs segmentation masks where each object has its own uniqe ID. I 
+# Transfer learning
 
-**Split observations based on object type**\
-The Explode observations script takes a shapefile with all training data and splits it into seperate shapefiles based on the feature class type. For example 1.shp = Hunting pits and 2.shp = Charcoal kilns. In the next step the script "create_segmentation_masks.py" is applied to each shapefile seperatly.
+## The moon
 
-    python /workspace/code/tools/explode_observations.py /workspace/code/data/remains.shp Classvalue /workspace/data/object_detection/explode_objects/
+The Lunar creaters were then used to create a binary raster mask where 1 is a creater and 0 is background. Creaters between x and x latidude were selected to avoid distorted creaters near the poles. Two segmentation masks were created. 1 for segmentation and 1 for object detection. 
+    
+    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/lunar_data/dem_lat_50/ /workspace/data/lunar_data/Catalog_Moon_Release_20180815_shapefile180/Catalog_Moon_Release_20180815_1kmPlus_180.shp Classvalue /workspace/data/lunar_data/topographical_indices_normalized/labels/
 
-**Convert segmentation masks to bounding boxes - Charcoal kilns**
-
-    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/split_segmentations_masks/charcoal_kilns/ 256 2 /workspace/data/object_detection/bounding_boxes/charcoal_kilns/
+    python /workspace/code/tools/create_segmentation_masks.py /workspace/data/lunar_data/dem_lat_50/ /workspace/data/lunar_data/Catalog_Moon_Release_20180815_shapefile180/Catalog_Moon_Release_20180815_1kmPlus_180.shp object_id /workspace/data/lunar_data/topographical_indices_normalized/object_labels/
 
 
-**Merge charcoal kilns and hunting pits's bounding boxes**\
-some image chips contain two classes of bounding boxes. This script merges those text files and then copies everything to a new directory with both overlapping and none overlaping bounding boxes.
+**Extract topographical indices**
 
-    python /workspace/code/object_detection/merge_bounding_boxes.py /workspace/data/object_detection/bounding_boxes/hunting_pits/ /workspace/data/object_detection/bounding_boxes/charcoal_kilns/ /workspace/data/object_detection/bounding_boxes/merged_charcoal_hunting/
+    python /workspace/code/Extract_topographcical_indices_05m.py /workspace/temp/ /workspace/data/lunar_data/dem_lat_50/ /workspace/data/lunar_data/topographical_indices_normalized/hillshade/ /workspace/data/lunar_data/topographical_indices_normalized/maxelevationdeviation/ /workspace/data/lunar_data/topographical_indices_normalized/multiscaleelevationpercentile/ /workspace/data/lunar_data/topographical_indices_normalized/minimal_curvature/ /workspace/data/lunar_data/topographical_indices_normalized/maximal_curvature/ /workspace/data/lunar_data/topographical_indices_normalized/profile_curvature/ /workspace/data/lunar_data/topographical_indices_normalized/stdon/ /workspace/data/lunar_data/topographical_indices_normalized/multiscale_stdon/ /workspace/data/lunar_data/topographical_indices_normalized/elevation_above_pits/ /workspace/data/lunar_data/topographical_indices_normalized/depthinsink/
+
+**Split lunar data into 250x250 chips**
+
+    ./workspace/code/split_indicies_moon.sh
+
+
+**Convert selected segmentation masks to bounding boxes**
+
+Use the object detection docker image to create bounding boxes.
+
+    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar detection:latest
+
+    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/lunar_data/split_data/object_labels/ 250 0 /workspace/data/lunar_data/bounding_boxes/
+
+    python /workspace/code/tools/copy_correct_chips.py /workspace/data/lunar_data/split_data/ /workspace/data/lunar_data/bounding_boxes/ /workspace/data/lunar_data/final_data/training/
+
+
+    ./code/partition_data_moon.sh
+
+## Train a u-net on the moon
+-p 8888:8888 --mount type=bind,src=G:\moon\code,target=/workspace/code --mount type=bind,src=G:\moon\data,target=/workspace/data segmentation:latest
+    docker run --gpus all -p 8888:8888 --mount type=bind,src=G:\moon\code,target=/workspace/code --mount type=bind,src=G:\moon\data,target=/workspace/data -v G:\moon:/home/jovyan/work tensorflow/tensorflow:latest-gpu-py3-jupyter
+
+docker run -p 8888:8888 --mount type=bind,src=G:\moon\code,target=/workspace/code --mount type=bind,src=G:\moon\data,target=/workspace/data -e JUPYTER_ENABLE_LAB=yes -v G:\moon\work:home/jovyan/work tensorflow/tensorflow:latest-gpu-py3-jupyter
+
+
+    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/lunar_data/final_data/training/maximal_curvature/ /workspace/data/lunar_data/final_data/training/labels/ /workspace/data/logfiles/moon/ --weighting="mfb" --seed=2 --depth=4 --epochs=200 --batch_size=4 --classes=0,1
+    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data_05m/testing/maximal_curvature/ /workspace/data/final_data_05m/testing/labels/ /workspace/data/logfiles/moon/trained.h5 /workspace/data/logfiles/moon/test.csv --classes=0,1 --depth=4
 
 ## contact information
 Mail:
