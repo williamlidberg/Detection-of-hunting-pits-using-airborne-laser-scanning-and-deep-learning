@@ -7,7 +7,7 @@ RUN pip install	whitebox
 RUN pip install	geopandas==0.10.2
 RUN pip install	splitraster==0.3.2
 RUN pip install	rasterio
-
+RUN pip install tensorflow
 #RUN DEBIAN_FRONTEND=noninteractive apt-get install software-properties-common -y
 #RUN add-apt-repository ppa:ubuntugis/ppa && apt-get update
 #RUN apt-get install gdal-bin -y

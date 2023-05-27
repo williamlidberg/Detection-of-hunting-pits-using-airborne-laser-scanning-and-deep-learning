@@ -9,12 +9,15 @@ import tensorflow as tf
 
 def _parse_classes(classes):
     '''Convert class string to list if necessary
+
     Parameters
     ----------
     classes : String or list of integer classes
+
     Returns
     -------
     List of integer classes
+
     '''
     if isinstance(classes, str):
         classes = [int(f) for f in classes.split(',')]
@@ -24,10 +27,12 @@ def _parse_classes(classes):
 class DataGenerator(tf.keras.utils.Sequence):
     def __init__(self, img_paths, gt_path, classes, batch_size=1, augment=True,
                  steps_per_epoch=None, seed=None, size=None, include=None,
-                 exclude=None, class_weights=None):
+                 exclude=None, class_weights=None, channel_last=True, flatten=False):
         '''Initialize data generator for multi-band training
+
         Input images are sorted by file name. Their position in the file list
         serves as their image id in the generator.
+
         Parameters
         ----------
         img_paths : List of paths to folders containing the respective band
@@ -48,9 +53,14 @@ class DataGenerator(tf.keras.utils.Sequence):
                   optional
         class_weights : List of weights containing one weight per class -
                         weigths are applied in order of classes list, optional
+        channel_last : Tensors produced by the generator will follow [B,H,W,C]
+                       order - otherwise [B,C,H,W]
+        flatten : Flatten the target output (needed for validation generator)
+
         Returns
         -------
         Data generator object
+
         '''
         # Either size, include or exclude must be specified
         assert ((size is None and include is None and exclude is not None)
@@ -61,6 +71,11 @@ class DataGenerator(tf.keras.utils.Sequence):
         self.classes = _parse_classes(classes)
         self.class_num = len(self.classes)
         self.steps_per_epoch = steps_per_epoch
+        self.channel_last = channel_last
+        if class_weights is None:
+            self.flatten = flatten
+        else:
+            self.flatten = True
 
         # problem info
         self.paths = self.__read_paths(img_paths, gt_path)
@@ -68,7 +83,6 @@ class DataGenerator(tf.keras.utils.Sequence):
         self.input_shape = in_shpe
 
         self.rng = np.random.default_rng(seed)
- 
         self.selected = self.__select_imgs(self.paths, size, include, exclude,
                                            self.rng)
         # set class weights
@@ -96,12 +110,15 @@ class DataGenerator(tf.keras.utils.Sequence):
            This approach has been proposed by Eigen and Fergus.
            When there is an uneven number of classes, the weight for the class
            with the median frequency is set to 1.0.
+
            D. Eigen, and R. Fergus, "Predicting Depth, Surface Normals and
            Semantic Labels With a Common Multi-Scale Convolutional
            Architecture", 2015,
+
         Returns
         -------
         list of class weights based on median frequency balancing
+
         '''
         weights = []
         class_counts = {c: 0 for c in self.classes}
@@ -140,15 +157,19 @@ class DataGenerator(tf.keras.utils.Sequence):
     def __infer_kemker_weights(self, mu=0.15):
         '''Estimate class distribution and calculate weights based on it
            Weights are calculated as proposed by Kemker et al.
+
            R. Kemker, C. Salvaggio, and C. Kanan, "Algorithms for semantic
            segmentation of multispectral remote sensing imagery using deep
            learning", 2018
+
         Parameters
         ----------
         mu : constant weighting factor
+
         Returns
         -------
         list of class weights based on class distributions
+
         '''
         weights = []
         class_distr = {c: 0 for c in self.classes}
@@ -166,16 +187,24 @@ class DataGenerator(tf.keras.utils.Sequence):
 
     def __get_problem_info(self, paths):
         '''Infer input shape from ground truth image
+
         Parameters
         ----------
         paths : list of paths of the format [([input img,], gt_img)]
+
         Returns
         -------
         input shape
+
         '''
         # assume all images have the same shape
         img = tifffile.imread(paths[0][1])
-        return (img.shape[0], img.shape[1], len(paths[0][0]))
+        if self.channel_last:
+            input_shape = [img.shape[0], img.shape[1], len(paths[0][0])]
+        else:
+            input_shape = [len(paths[0][0]), img.shape[0], img.shape[1]]
+
+        return input_shape
 
     def __select_imgs(self, paths, size, include, exclude, rng):
         if size is not None:
@@ -243,20 +272,93 @@ class DataGenerator(tf.keras.utils.Sequence):
         self.index = self.selected.copy()
         self.rng.shuffle(self.index)
 
+    def __create_input(self, img_paths, flip, transform):
+        '''Create input tensor from given band images and apply required
+        augmentation
+
+        Parameters
+        ----------
+        img_paths : Paths to the different band images
+        flip : Flip transformation to apply
+        transform : Rotation transformation to apply
+
+        Returns
+        -------
+        Prepared input tensor in configured channel order
+
+        '''
+        tmp = np.zeros(self.input_shape)
+        for i, img_path in enumerate(img_paths):
+            # img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+            img = tifffile.imread(img_path)
+            if self.augment:
+                img = self.apply_transform(img, flip, transform)
+            # img = img.astype(np.float32) / 255.
+            img = img.astype(np.float32)
+            if self.channel_last:
+                tmp[:, :, i] = img
+            else:
+                tmp[i, :, :] = img
+
+        return tmp
+
+    def __create_gt(self, gt, flip, transform):
+        '''Create ground truth tensor
+           Ground truth band sorting is done based on class order
+           first band is class with lowest number, second band second
+           lowest, e.g., 0 - anything else, 1 - ditch, 2 - natural stream
+           band order [anything else, ditch, natural stream]
+
+        Parameters
+        ----------
+        gt : Ground truth image
+        flip : Flip transformation to apply
+        transform : Rotation transformation to apply
+
+        Returns
+        -------
+        Prepared input tensor in configured channel order
+
+        '''
+        if self.augment:
+            gt = self.apply_transform(gt, flip, transform, gt=True)
+
+        gt_new = np.zeros(self.class_num * gt.shape[0] * gt.shape[1])
+        if self.channel_last:
+            gt_new = gt_new.reshape((*gt.shape, self.class_num))
+        else:
+            gt_new = gt_new.reshape((self.class_num, *gt.shape))
+
+        # set ground truth band
+        for i, c in enumerate(self.classes):
+            if self.channel_last:
+                gt_new[gt == c, i] = 1
+            else:
+                gt_new[i, gt == c] = 1
+
+        # flatten ground truth for manual weighting
+        if self.flatten:
+            if self.channel_last:
+                gt_new = gt_new.reshape((-1, self.class_num))
+            else:
+                gt_new = gt_new.reshape((self.class_num, -1))
+
+        return gt_new
+
     def __get_data(self, batch):
         X = []
         y = []
         weights = []
 
         for img_paths, gt_path in batch:
+            # gt = cv2.imread(gt_path, cv2.IMREAD_GRAYSCALE)
             gt = tifffile.imread(gt_path)
 
+            transform = None
+            flip = None
             if self.augment:
-                transform = None
-                flip = None
                 # select = self.rng.integers(0, 2, 3)
                 select = self.rng.integers(0, 2, 2)
-
                 if select[0]:
                     flip = self.choose_flip_augmentation(self.rng)
                 if select[1]:
@@ -264,27 +366,12 @@ class DataGenerator(tf.keras.utils.Sequence):
                 # if select[2]:
                 #    transform = self.choose_affine_transform_augmentation(
                 #                                                gt, self.rng)
-            # Create input image with containing all provided bands
-            tmp = np.zeros(self.input_shape)
-            for i, img_path in enumerate(img_paths):
-                img = tifffile.imread(img_path)
-                if self.augment:
-                    img = self.apply_transform(img, flip, transform)
-                img = img.astype(np.float32)
-                tmp[:, :, i] = img
+            # Create input image containing all provided bands
+            tmp = self.__create_input(img_paths, flip, transform)
             X.append(tmp)
 
-            if self.augment:
-                gt = self.apply_transform(gt, flip, transform, gt=True)
-            gt_new = np.zeros(self.class_num * gt.shape[0] *
-                              gt.shape[1]).reshape((*gt.shape, self.class_num))
-            # set ground truth band - sorting is done based on class order
-            # first band is class with lowest number, second band second
-            # lowest, e.g., 0 - anything else, 1 - ditch, 2 - natural stream
-            # band order [anything else, ditch, natural stream]
-            for i, c in enumerate(self.classes):
-                gt_new[gt == c, i] = 1
-            y.append(gt_new.reshape((-1, self.class_num)))
+            tmp = self.__create_gt(gt, flip, transform)
+            y.append(tmp)
 
             if self.class_weights is not None:
                 w = np.zeros(gt.shape[0] * gt.shape[1]).reshape(*gt.shape)
@@ -294,8 +381,8 @@ class DataGenerator(tf.keras.utils.Sequence):
 
         if self.class_weights is None:
             return np.array(X), np.array(y)
-        else:
-            return np.array(X), np.array(y), np.array(weights)
+
+        return np.array(X), np.array(y), np.array(weights)
 
     def choose_flip_augmentation(self, rng):
         chosen_flip = None

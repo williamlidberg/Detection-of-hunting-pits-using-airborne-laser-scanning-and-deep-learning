@@ -106,8 +106,8 @@ def read_input(bands):
 
 #def main(input_path, model_path, out_path, img_type, tile_size, margin,
 #         threshold, wo_crf):
-def main(img_path, model_path, out_path, img_type, tile_size, margin, 
-         depth, class_num):
+def main(img_path, model_path, out_path, model_type, img_type, tile_size, margin, 
+         depth, class_num,band_wise):
 
     # setup paths
     for path in img_path:
@@ -124,11 +124,16 @@ def main(img_path, model_path, out_path, img_type, tile_size, margin,
         imgs = [[f] for f in img_path]
 
     # load model
+    size = 1 if imgs is None else None
+    model_cls = utils.unet.MODELS[model_type]
     input_shape = (tile_size, tile_size, len(imgs))
-    unet = utils.unet.XceptionUNet(input_shape, depth=depth,
-                                   classes=class_num)
-    unet.model.load_weights(model_path)
-    model = unet.model
+
+    # no weighting required for inference
+    weighting = utils.unet.SegmentationModelInterface.WEIGHTING.NONE
+    model = model_cls(input_shape, depth=depth,
+                      classes=class_num, entry_block=not band_wise,
+                      weighting=weighting)
+    model.load_weights(model_path)
 
     for bands in zip(*imgs):
         predicted = []
@@ -152,9 +157,9 @@ def main(img_path, model_path, out_path, img_type, tile_size, margin,
 
         # perform prediction
         for i in range(0, len(patches), bs):
-            batch = np.array(patches[i:i+bs])
-            batch = batch.reshape((bs, *input_shape))
-            out = model.predict(batch)
+            out = model.proba(img)
+            classes = out.shape[-1]
+            out = out.reshape((1, -1, classes))
             for o in out:
                 # choose id of output band with maximum probability
                 tmp = np.argmax(o, axis=-1)
@@ -185,19 +190,19 @@ if __name__ == '__main__':
                         'to input images (either path to single image or to '
                         'folder containing images)')
     parser.add_argument('model_path')
+    parser.add_argument('model_type', help='Segmentation model to use',
+                        choices=list(utils.unet.MODELS.keys()))
     parser.add_argument('out_path', help='Path to output folder')
     parser.add_argument('--img_type', help='Output image file ending',
                         default='tif')
-    # parser.add_argument('--tile_size', help='Tile size', type=int,
-    #                     default=512)
     parser.add_argument('--tile_size', help='Tile size', type=int,
                         default=250)
     parser.add_argument('--margin', help='Margin', type=int, default=50)
+    parser.add_argument('--band_wise', action='store_true',
+                        help='Apply separable convolutions on input bands.')
     parser.add_argument('--depth', help='UNet depth', type=int, default=4)
     parser.add_argument('--class_num', help='Number of classes', type=int, default=2)
-    # parser.add_argument('--unet_mode', choices=utils.unet.XceptionUNet.UNET_MODES,
-    #                     default=utils.unet.XceptionUNet.UNET_MODES[0], 
-    #                     help='Choose UNet architecture configuration')
+
 
     args = vars(parser.parse_args())
     main(**args)

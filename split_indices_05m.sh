@@ -46,7 +46,7 @@ python /workspace/code/tools/split_training_data.py /workspace/data/topographica
 echo "Split profile_curvature"
 python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized_pits/profile_curvature/ /workspace/data/split_data_pits/profile_curvature/ --tile_size 250
 echo "Split labels"
-python /workspace/code/tools/split_training_data.py /workspace/data/segmentation_masks_pits/ /workspace/data/split_data_pits/labels/ --tile_size 250
+python /workspace/code/tools/split_training_data.py /workspace/data/segmentation_masks_pits_05m/ /workspace/data/split_data_pits_05m/labels/ --tile_size 250
 echo "Split maximal_curvature"
 python /workspace/code/tools/split_training_data.py /workspace/data/topographical_indices_normalized_pits/maximal_curvature/ /workspace/data/split_data_pits/maximal_curvature/ --tile_size 250
 echo "Split multiscale_stdon"

@@ -1,10 +1,10 @@
 #!/bin/bash 
 echo "Randomly select 20 % of the chips to be moved to test data directories."
 echo "A list of test chips will be located in /workspace/data/final_data_05m/test_chips.csv."
-python /workspace/code/tools/create_partition.py /workspace/data/final_data_05m/training/labels/ /workspace/data/final_data_05m/test_chips.csv
+#python /workspace/code/tools/create_partition.py /workspace/data/final_data_05m/training/labels/ /workspace/data/final_data_05m/test_chips.csv
 
 echo "creating test directory"
-mkdir /workspace/data/final_data_05m/testing
+#mkdir /workspace/data/final_data_05m/testing
 
 echo "empty old test directories and creating new ones before moving test files"
 rm -r /workspace/data/final_data_05m/testing/elevation_above_pit
