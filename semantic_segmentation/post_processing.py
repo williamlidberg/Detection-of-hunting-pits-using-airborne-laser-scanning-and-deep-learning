@@ -4,7 +4,6 @@ import shutil
 import tifffile
 import os
 os.environ["WBT_LINUX"] = "MUSL"
-#import whitebox
 import whitebox
 whitebox.download_wbt(linux_musl=True, reset=True)
 wbt = whitebox.WhiteboxTools()

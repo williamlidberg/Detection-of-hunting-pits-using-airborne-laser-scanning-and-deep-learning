@@ -1,3 +1,4 @@
+import cv2
 import os
 import numpy as np
 import tifffile
@@ -5,38 +6,46 @@ from osgeo import gdal
 import utils.unet
 import utils.WriteGeotiff
 
-def patchify_x(img, start_y, patches, tile_size, margin, width):
+def patchify_x(img, start_y, patches, tile_size, margin, width, channel_last):
     start_x = 0
-    _, _, bands = img.shape
     while start_x + tile_size <= width:
-        patches.append(img[start_y:start_y+tile_size,
-                           start_x:start_x+tile_size, :].copy())
+        if channel_last:
+            patches.append(img[start_y:start_y+tile_size,
+                               start_x:start_x+tile_size, :].copy())
+        else:
+            patches.append(img[:, start_y:start_y+tile_size,
+                               start_x:start_x+tile_size].copy())
         # subtract own margin and margin of previous patch, so that margin of
         # previous patch is covered by the active area of the next patch
         start_x += tile_size - 2 * margin
-        assert patches[-1].shape == (tile_size, tile_size, bands),\
-            'shape: {}'.format(patches[-1].shape)
     # handle right boarder
     if start_x < width:
         start_x = width - tile_size
-        patches.append(img[start_y:start_y+tile_size,
-                           start_x:start_x+tile_size, :].copy())
-        assert patches[-1].shape == (tile_size, tile_size, bands),\
-            'shape: {}'.format(patches[-1].shape)
+        if channel_last:
+            patches.append(img[start_y:start_y+tile_size,
+                               start_x:start_x+tile_size, :].copy())
+        else:
+            patches.append(img[:, start_y:start_y+tile_size,
+                               start_x:start_x+tile_size].copy())
 
 
-def patchify(img, tile_size, margin):
+def patchify(img, tile_size, margin, channel_last):
     patches = []
 
-    height, width, bands = img.shape
+    if channel_last:
+        height, width, _ = img.shape
+    else:
+        _, height, width = img.shape
     start_y = 0
     while start_y + tile_size <= height:
-        patchify_x(img, start_y, patches, tile_size, margin, width)
+        patchify_x(img, start_y, patches, tile_size, margin, width,
+                   channel_last)
         start_y += tile_size - 2 * margin
     # handle bottom boarder
     if start_y < height:
         start_y = height - tile_size
-        patchify_x(img, start_y, patches, tile_size, margin, width)
+        patchify_x(img, start_y, patches, tile_size, margin, width,
+                   channel_last)
 
     return patches
 
@@ -56,15 +65,15 @@ def start_and_end(base, tile_size, margin, limit, remainder):
 
 
 def unpatchify(shape, patches, tile_size, margin):
-    img = np.zeros(shape[:-1])
-    height, width, _ = shape
+    img = np.zeros(shape)
+    height, width = shape
     remain_height = height % tile_size
     remain_width = width % tile_size
 
     dest_start_y = 0
     dest_start_x = 0
 
-    for i, patch in enumerate(patches):
+    for patch in patches:
         remain_width = width - dest_start_x
         remain_height = height - dest_start_y
         src_start_y, src_end_y = start_and_end(dest_start_y, tile_size, margin,
@@ -84,30 +93,41 @@ def unpatchify(shape, patches, tile_size, margin):
     return img
 
 
-def read_input(bands):
+def read_input(bands, channel_last):
     '''Assemble input from list of provided tif files
        inputs will be added in order in which they are provided
+
     Parameters
     ----------
     bands : list of pathes to tif files
+    channel_last : indicate location of channel dimension
+
     Returns
     -------
-    Tensor of shape (input height, input width, number of bands)
+    Tensor of shape (input height, input width, number of bands) or (number of
+    bands, input height, input width) - depending on channel_last
+
     '''
     tmp = tifffile.imread(bands[0])
-    img = np.zeros([*tmp.shape, len(bands)])
+    if channel_last:
+        img = np.zeros([*tmp.shape, len(bands)])
+    else:
+        img = np.zeros([len(bands), *tmp.shape])
     for i, band in enumerate(bands):
         tmp = tifffile.imread(band)
         tmp = tmp.astype(np.float32)
-        img[:, :, i] = tmp
+        if channel_last:
+            img[:, :, i] = tmp
+        else:
+            img[i, :, :] = tmp
 
     return img
 
 
 #def main(input_path, model_path, out_path, img_type, tile_size, margin,
 #         threshold, wo_crf):
-def main(img_path, model_path, out_path, model_type, img_type, tile_size, margin, 
-         depth, class_num,band_wise):
+def main(img_path, model_path, out_path, model_type, band_wise, depth,
+         img_type, tile_size, margin, classes):
 
     # setup paths
     for path in img_path:
@@ -124,49 +144,54 @@ def main(img_path, model_path, out_path, model_type, img_type, tile_size, margin
         imgs = [[f] for f in img_path]
 
     # load model
-    size = 1 if imgs is None else None
     model_cls = utils.unet.MODELS[model_type]
-    input_shape = (tile_size, tile_size, len(imgs))
 
-    # no weighting required for inference
-    weighting = utils.unet.SegmentationModelInterface.WEIGHTING.NONE
-    model = model_cls(input_shape, depth=depth,
-                      classes=class_num, entry_block=not band_wise,
-                      weighting=weighting)
+    if model_cls.CHANNEL_LAST:
+        input_shape = (tile_size, tile_size, len(imgs))
+    else:
+        input_shape = (len(imgs), tile_size, tile_size)
+    model = model_cls(
+               input_shape, depth=depth,
+               classes=len(classes.split(',')),
+               entry_block=not band_wise,
+               weighting=utils.unet.SegmentationModelInterface.WEIGHTING.NONE)
     model.load_weights(model_path)
 
     for bands in zip(*imgs):
         predicted = []
 
-        img = read_input(bands)
+        img = read_input(bands, model.CHANNEL_LAST)
 
         # we do not need to patchify image if image is too small to be split
         # into patches - assume that img width == img height
-        do_patchify = True if tile_size < img.shape[0] else False
+        do_patchify = tile_size < img.shape[0]
 
         if do_patchify:
-            patches = patchify(img, tile_size, margin)
+            patches = patchify(img, tile_size, margin, model.CHANNEL_LAST)
         else:
             patches = [img]
 
         # find suitable batch size
         for i in [8, 4, 2, 1]:
             if len(patches) % i == 0:
-                bs = i
+                batch_size = i
                 break
 
         # perform prediction
-        for i in range(0, len(patches), bs):
-            out = model.proba(img)
-            classes = out.shape[-1]
-            out = out.reshape((1, -1, classes))
-            for o in out:
+        for i in range(0, len(patches), batch_size):
+            batch = np.array(patches[i:i+batch_size])
+            batch = batch.reshape((batch_size, *input_shape))
+            out = model.proba(batch)
+            for output in out:
                 # choose id of output band with maximum probability
-                tmp = np.argmax(o, axis=-1)
+                tmp = np.argmax(output, axis=-1)
                 predicted.append(tmp.reshape(input_shape[:-1]))
 
         if do_patchify:
-            out = unpatchify(img.shape, predicted, tile_size, margin)
+            if model.CHANNEL_LAST:
+                out = unpatchify(img.shape[:-1], predicted, tile_size, margin)
+            else:
+                out = unpatchify(img.shape[1:], predicted, tile_size, margin)
         else:
             out = predicted[0]
 
@@ -177,6 +202,7 @@ def main(img_path, model_path, out_path, model_type, img_type, tile_size, margin
                                        os.path.join(out_path,
                                                     '{}.{}'.format(img_name,
                                                                    img_type)))
+        #cv2.imwrite(os.path.join(out_path,'{}.{}'.format(img_name, img_type)), out)
 
 
 if __name__ == '__main__':
@@ -190,19 +216,20 @@ if __name__ == '__main__':
                         'to input images (either path to single image or to '
                         'folder containing images)')
     parser.add_argument('model_path')
+    parser.add_argument('out_path', help='Path to output folder')
     parser.add_argument('model_type', help='Segmentation model to use',
                         choices=list(utils.unet.MODELS.keys()))
-    parser.add_argument('out_path', help='Path to output folder')
-    parser.add_argument('--img_type', help='Output image file ending',
-                        default='tif')
-    parser.add_argument('--tile_size', help='Tile size', type=int,
-                        default=250)
-    parser.add_argument('--margin', help='Margin', type=int, default=50)
     parser.add_argument('--band_wise', action='store_true',
                         help='Apply separable convolutions on input bands.')
-    parser.add_argument('--depth', help='UNet depth', type=int, default=4)
-    parser.add_argument('--class_num', help='Number of classes', type=int, default=2)
-
+    parser.add_argument('--depth', type=int, default=2)
+    parser.add_argument('--img_type', help='Output image file ending',
+                        default='tif')
+    parser.add_argument('--classes', help='List of class labels in ground '
+                        'truth - order needs to correspond to weighting order',
+                        default='0,1,2')
+    parser.add_argument('--tile_size', help='Tile size', type=int,
+                        default=250)
+    parser.add_argument('--margin', help='Margin', type=int, default=100)
 
     args = vars(parser.parse_args())
     main(**args)

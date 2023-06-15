@@ -58,7 +58,21 @@ You can run the container in the background with screen
 
     screen -S segmentation
 
-    docker run -it --rm -p 8887:8887 --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog/:/workspace/lidar segmentation:latest bash
+
+
+**Without notebook**
+
+mig 1
+        docker run -it --gpus device=0:0 -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog/:/workspace/lidar segmentation:latest bash
+
+        
+
+mig 2
+        docker run -it --gpus device=0:1 -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog/:/workspace/lidar segmentation:latest bash
+
+
+
+    docker run -it --rm -p 8882:8882 --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog/:/workspace/lidar segmentation:latest bash
 
     docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog/:/workspace/lidar segmentation:latest bash
 
@@ -66,11 +80,11 @@ You can run the container in the background with screen
 
     jupyter lab --ip=0.0.0.0 --port=8887 --allow-root --no-browser --NotebookApp.allow_origin='*'
 
-    ssh -L 8884:localhost:8884 william@193.10.101.143
+    ssh -L 8887:localhost:8887 william@193.10.101.143
 
-Without notebook
 
-docker run -it --rm --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog/:/workspace/lidar segmentation:latest bash
+    ssh -L 8881:localhost:8881 wmli0001@lidar1-1.ad.slu.se
+
 
 # Training data
 The training data were collected from multiple sources. Historical forest maps from local archives where digitized and georeferenced. Open data from the [swedish national heritage board were downloaded and digitized](https://pub.raa.se/). All remains where referenced with the liDAR data in order to match the reported remain to the LiDAR data. In total x hunting pits where manually digitized and corrected this way.
@@ -211,41 +225,15 @@ create data split between training and testing using this script. The batch scri
 
 
 # Train and evaluate Unet
-**Example**
-python /workspace/code/semantic_segmentation/train.py -I /workspace/data/final_data_05m/training/hillshade/ /workspace/data/final_data_05m/training/labels/ /workspace/data/logfiles/test/basic_unet UNet --weighting="focal" --seed=1 --epochs=100 --batch_size=32 --classes=0,1
-
-python /workspace/code/semantic_segmentation/evaluate_model.py -I /workspace/data/final_data_05m/testing/hillshade/ /workspace/data/final_data_05m/testing/labels/ /workspace/data/logfiles/test/basic_unet/trained.h5 UNet /workspace/data/logfiles/test/basic_unet/test.csv --classes=0,1
 
 
-The training and evaluation of test chips can be done with these two batch scripts: 
+The training and evaluation of test chips can be done with these batch scripts:
 
-./workspace/code/semantic_segmentation/train_test_unet_05m.sh
-./workspace/code/semantic_segmentation/train_test_unet_1m.sh
-
-
-**find batch size**
-
-    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data_05m/training/maximal_curvature/ /workspace/data/final_data_05m/training/labels/ /workspace/data/logfiles/05m/maximal_curvature7/ --weighting="mfb" --seed=2 --depth=4 --epochs=200 --batch_size=64 --classes=0,1
-    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data_05m/testing/maximal_curvature/ /workspace/data/final_data_05m/testing/labels/ /workspace/data/logfiles/05m/maximal_curvature7/trained.h5 /workspace/data/logfiles/05m/maximal_curvature7/test.csv --classes=0,1 --depth=4
-
-
-
-
-
-to mount local files run the container with
-
-    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /home/william/AI:/workspace/data -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data/logfiles:/workspace/logfiles/ segmentation:latest
-
-
-    python /workspace/code/semantic_segmentation/train_unet.py -I /workspace/data/final_data_1m/training/hillshade/ -I /workspace/data/final_data_1m/training/maxelevationdeviation/ -I /workspace/data/final_data_1m/training/minimal_curvature/ -I /workspace/data/final_data_1m/training/maximal_curvature/ -I /workspace/data/final_data_1m/training/profile_curvature/ -I /workspace/data/final_data_1m/training/stdon/ -I /workspace/data/final_data_1m/training/depthinsink/ /workspace/data/final_data_1m/training/labels/ /workspace/data/logfiles/test --weighting="mfb" --seed=1 --depth=2 --epochs=200 --batch_size=64 --classes=0,1
-    
-    python /workspace/code/semantic_segmentation/evaluate_unet.py -I /workspace/data/final_data_1m/testing/hillshade/ -I /workspace/data/final_data_1m/testing/maxelevationdeviation/ -I /workspace/data/final_data_1m/testing/minimal_curvature/ -I /workspace/data/final_data_1m/testing/maximal_curvature/ -I /workspace/data/final_data_1m/testing/profile_curvature/ -I /workspace/data/final_data_1m/testing/stdon/ -I /workspace/data/final_data_1m/testing/depthinsink/ /workspace/data/final_data_1m/testing/labels/ /workspace/data/logfiles/test/trained.h5 /workspace/data/logfiles/test/test.csv --classes=0,1 --depth=2
-
-
-## Inference on demo area
-
-    python /workspace/code/semantic_segmentation/post_processing.py /workspace/data/test_data_pits/inference/ /workspace/data/post_processing/raw_polygons/ /workspace/data/post_processing/filtered_polygons/ /workspace/data/test_data_pits/inference_post_processed/ --min_area=9 --min_ratio=-0.5
-
+        ./Pre_train_UNets_with_the_moon.sh
+        ./train_test_unet_05m.sh
+        ./train_test_unet_1m.sh
+        ./train_test_xception_unet_05m.sh
+        ./train_test_xception_unet_1m.sh
 
 
 
@@ -262,19 +250,20 @@ Calculate topoindicies
 
     python /workspace/code/Extract_topographcical_indices_1m.py /workspace/temp/ /workspace/data/demo_area/dem_tiles_1m/ /workspace/data/demo_area/topographical_indicies_1m/hillshade/ /workspace/data/demo_area/topographical_indicies_1m/maxelevationdeviation/ /workspace/data/demo_area/topographical_indicies_1m/multiscaleelevationpercentile/ /workspace/data/demo_area/topographical_indicies_1m/minimal_curvature/ /workspace/data/demo_area/topographical_indicies_1m/maximal_curvature/ /workspace/data/demo_area/topographical_indicies_1m/profile_curvature/ /workspace/data/demo_area/topographical_indicies_1m/stdon/ /workspace/data/demo_area/topographical_indicies_1m/multiscale_stdon/ /workspace/data/demo_area/topographical_indicies_1m/elevation_above_pit/ /workspace/data/demo_area/topographical_indicies_1m/depthinsink/
 
-**Inference maximal curvature 05 m**
-    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_05m/maximal_curvature /workspace/data/logfiles/05m/maximal_curvature1/trained.h5 /workspace/data/demo_area/inference/inference_maximal_curvature_05m2
+**Inference using the best indices**
 
 
-    post processing
-        python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/demo_area/inference/inference_maximal_curvature_05m2/ /workspace/data/demo_area/inference_post_processed/ --output_type=polygon --min_area=9 --min_ratio=-0.5
+    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_05m/minimal_curvature /workspace/data/logfiles/UNet/05m/minimal_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_05m/inference/ UNet --classes 0,1
+    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_1m/minimal_curvature /workspace/data/logfiles/UNet/1m/minimal_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_1m/inference/ UNet --classes 0,1
+
+    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_05m/maximal_curvature /workspace/data/logfiles/ExceptionUNet/05m/maximal_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_05m/inference_exception/ XceptionUNet --classes 0,1
+    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_1m/profile_curvature /workspace/data/logfiles/ExceptionUNet/1m/profile_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_1m/inference_exception/ XceptionUNet --classes 0,1    
 
 
-Inference
-    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_05m/hillshade/ -I /workspace/data/demo_area/topographical_indicies_05m/maxelevationdeviation/ -I /workspace/data/demo_area/topographical_indicies_05m/multiscaleelevationpercentile/ -I /workspace/data/demo_area/topographical_indicies_05m/minimal_curvature/ -I /workspace/data/demo_area/topographical_indicies_05m/maximal_curvature/ -I /workspace/data/demo_area/topographical_indicies_05m/profile_curvature/ -I /workspace/data/demo_area/topographical_indicies_05m/stdon/ -I /workspace/data/demo_area/topographical_indicies_05m/multiscale_stdon/ -I /workspace/data/demo_area/topographical_indicies_05m/elevation_above_pit/ -I /workspace/data/demo_area/topographical_indicies_05m/depthinsink/ /workspace/data/logfiles/pits/everything1/trained.h5 /workspace/data/demo_area/topographical_indicies_05m/inference/
 
-post processing
-    python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/demo_area/inference/inference_maximal_curvature_05m/ /workspace/data/demo_area/topographical_indicies_05m/inference_post_processed/ --output_type=polygon --min_area=9 --min_ratio=-0.6
+    python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/demo_area/topographical_indicies_05m/inference_exception/ /workspace/data/demo_area/topographical_indicies_05m/inference_exception_post_processed/ --output_type=polygon --min_area=30 --min_ratio=-1
+    python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/demo_area/topographical_indicies_1m/inference_exception/ /workspace/data/demo_area/topographical_indicies_1m/inference_exception_post_processed/ --output_type=polygon --min_area=30 --min_ratio=-1
+
 
 
 **convert test chips to polygon**

@@ -13,26 +13,7 @@ from torch.optim.lr_scheduler import StepLR
 from .ca_net.Models.networks.network import Comprehensive_Atten_Unet
 from .ca_net.utils.dice_loss import SoftDiceLoss, get_soft_label
 from .ca_net.utils.evaluation import AverageMeter
-from keras import backend as K
-from sklearn.metrics import matthews_corrcoef
 
-'''Set up f1 score as a metric to monitor during training'''
-def recall_m(y_true, y_pred):
-    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
-    possible_positives = K.sum(K.round(K.clip(y_true, 0, 1)))
-    recall = true_positives / (possible_positives + K.epsilon())
-    return recall
-
-def precision_m(y_true, y_pred):
-    true_positives = K.sum(K.round(K.clip(y_true * y_pred, 0, 1)))
-    predicted_positives = K.sum(K.round(K.clip(y_pred, 0, 1)))
-    precision = true_positives / (predicted_positives + K.epsilon())
-    return precision
-
-def f1_m(y_true, y_pred):
-    precision = precision_m(y_true, y_pred)
-    recall = recall_m(y_true, y_pred)
-    return 2*((precision*recall)/(precision+recall+K.epsilon()))
 
 class SegmentationModelInterface(metaclass=abc.ABCMeta):
 
@@ -316,7 +297,11 @@ class CANet:
         model_path : Path to the file containing the model weights
 
         '''
-        checkpoint = torch.load(model_path)
+        if self.on_gpu:
+            checkpoint = torch.load(model_path)
+        else:
+            checkpoint = torch.load(model_path, 
+                                    map_location=torch.device('cpu'))
         self.start_epoch = checkpoint['epoch']
         self.model.load_state_dict(checkpoint['state_dict'])
         self.optimizer.load_state_dict(checkpoint['opt_dict'])
@@ -517,7 +502,7 @@ class UNet():
         log_path : Path under which the log files and models will be stored
 
         '''
-        metrics = ['accuracy', keras.metrics.Recall(), f1_m]
+        metrics = ['accuracy', keras.metrics.Recall()]
         # record IoU for each class separately
         for i in range(train_data.class_num):
             metrics.append(keras.metrics.OneHotIoU(
@@ -553,6 +538,7 @@ class UNet():
                                         save_weights_only=True,
                                         verbose=0, save_best_only=True),
             keras.callbacks.TensorBoard(log_dir=log_path, histogram_freq=5,
+                                        write_grads=True, batch_size=2,
                                         write_images=True),
             keras.callbacks.CSVLogger(os.path.join(log_path, 'log.csv'),
                                       append=True, separator=';')
@@ -689,7 +675,8 @@ class XceptionUNet(UNet):
                 )
             else:
                 # do not downsample the feature maps
-                residual = previous_block_activation
+                residual = layers.Conv2D(filters, 1, padding="same")(
+                                            previous_block_activation)
             x = layers.add([x, residual])  # Add back residual
             previous_block_activation = x  # Set aside next residual
 
@@ -712,7 +699,8 @@ class XceptionUNet(UNet):
                 residual = layers.Conv2D(filters, 1, padding="same")(residual)
             else:
                 # no need to upsample
-                residual = previous_block_activation
+                residual = layers.Conv2D(filters, 1, padding="same")(
+                                                previous_block_activation)
             x = layers.add([x, residual])  # Add back residual
             previous_block_activation = x  # Set aside next residual
 
