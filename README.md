@@ -78,13 +78,14 @@ mig 2
 
     cd /workspace/code/notebooks/
 
-    jupyter lab --ip=0.0.0.0 --port=8887 --allow-root --no-browser --NotebookApp.allow_origin='*'
+    jupyter lab --ip=0.0.0.0 --port=8882 --allow-root --no-browser --NotebookApp.allow_origin='*'
 
-    ssh -L 8887:localhost:8887 william@193.10.101.143
+    ssh -L 8882:localhost:8882 william@193.10.101.143
 
 
     ssh -L 8881:localhost:8881 wmli0001@lidar1-1.ad.slu.se
 
+cd5492c48e18948f8cbfa47acbf0697ea5f95bdc472f865c
 
 # Training data
 The training data were collected from multiple sources. Historical forest maps from local archives where digitized and georeferenced. Open data from the [swedish national heritage board were downloaded and digitized](https://pub.raa.se/). All remains where referenced with the liDAR data in order to match the reported remain to the LiDAR data. In total x hunting pits where manually digitized and corrected this way.
@@ -235,7 +236,9 @@ The training and evaluation of test chips can be done with these batch scripts:
         ./train_test_xception_unet_05m.sh
         ./train_test_xception_unet_1m.sh
 
+# Evaluate as objects
 
+    python /workspace/code/semantic_segmentation/evlaute_as_objects.py /workspace/data/final_data_05m/testing/polygon_labels/ /workspace/data/final_data_05m/testing/inference_XceptionUNet/05m/inference_polygon/minimal_curvature/ 
 
 **Demo area**
 Extrat dems
@@ -259,19 +262,25 @@ Calculate topoindicies
     python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_05m/maximal_curvature /workspace/data/logfiles/ExceptionUNet/05m/maximal_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_05m/inference_exception/ XceptionUNet --classes 0,1
     python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_1m/profile_curvature /workspace/data/logfiles/ExceptionUNet/1m/profile_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_1m/inference_exception/ XceptionUNet --classes 0,1    
 
+**convert test labels to polygon**
+    Y:\William\GitHub\Remnants-of-charcoal-kilns\tools\labels_to_polygons.py
 
+**convert test predictions to polygon**
 
     python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/demo_area/topographical_indicies_05m/inference_exception/ /workspace/data/demo_area/topographical_indicies_05m/inference_exception_post_processed/ --output_type=polygon --min_area=30 --min_ratio=-1
     python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/demo_area/topographical_indicies_1m/inference_exception/ /workspace/data/demo_area/topographical_indicies_1m/inference_exception_post_processed/ --output_type=polygon --min_area=30 --min_ratio=-1
 
 
 
-**convert test chips to polygon**
-
-    python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/final_data_05m/testing/labels/ /workspace/data/final_data_05m/testing/polygon_labels/ --output_type=polygon --min_area=5 --min_ratio=-0.5
 
 
 
+# Inference_Sweden
+
+    * laz to DEM
+    * DEM to topographical index
+    * inference on topographical index
+    * post processing on infered result
 
 
 
