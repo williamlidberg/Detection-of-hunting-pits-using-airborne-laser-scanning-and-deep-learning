@@ -4,38 +4,38 @@
 
 
 
-# Cultural-remains
+# Detection-of-hunting-pits-using-LiDAR-and-deep-learning
 ## AIM
-The aim of this project is to evaluate methods to automatically detect trapping pits using remote sensing. Two machine learning methods will be tested on multiple topographical indices extracted from LiDAR data. 
+The aim was to investigate whether hunting pits could be automatically mapped using Swedish national ALS data and deep learning. We also evaluated the performance of traditional topographical indices and multiple state-of-the-art topographical indices explicitly selected to enhance pit structures in high-resolution DEM data. 
 
 
-<img src="images/träd9.png" alt="Charcoal kiln" width="50%"/>
-
+<img src="images/Hunting_kids.jpg" alt="Study area" width="75%"/>\
 
 # Table of  Contents
 
 1. [Docker containers](#Docker-containers)
-3. [Training data](#Training-data)
+3. [Training and testing data](#Training-and-testing-data)
     1. [Create digital elevation model](##Create-digital-elevation-model)
     2. [Extract and normalize topographical indices](##Extract-and-normalize-topographical-indices)
+    3. [Demonstration area](#Demo-area)
+4. [Transfer learning with the moon](#Transfer-learning-with-the-moon)
+    1. [Lunar data](#Lunar-data)
+    2. [Create segmentation masks and bounding boxes from impact creaters](#Create-segmentation-masks-and-bounding-boxes-from-impact-creaters)
+    3. [Extract and normalize topographical indices from the lunar DEM](#Extract-and-normalize-topographical-indices-from-the-lunar-DEM)
 6. [Semantic segmentation](#Semantic-segmentation)
     1. [Create segmentation masks](##Create-segmentation-mask)
     2. [Create image chips](##Create-image-chips)
     3. [Train U-net](##Train-U-net)
     4. [Evaluate U-net](##Evaluate-U-net)
     5. [Inference U-net](##Inference-U-net)
-    6. [Post-processing U-net](##Post-processing-U-net)
 7. [Object detection](#Object-detection)
     1. [Create bounding boxes](##Create-bounding-boxes)
     2. [Train YOLO](##Train-YOLO)
     3. [Evaluate YOLO](##Evaluate-YOLO)
     4. [Inference YOLO](##Inference-YOLO)
-8. [Transfer learning](#Transfer-learning)
-    1. [Data description](##Data-description)
-    2. [Select craters](##Select-craters)
-    3. [Craters to segmentation masks](##Craters-to-segmentation-masks)
-    4. [Craters to bounding boxes](##Craters-to-bounding-boxes)
-9. [References](#References)
+9. [Results](#Results)
+    1. [Performance on test data](#Performance-on-test-data)
+    2. [Performance in demonstration area](#Performance-in-demonstration-area)
 
 ***
 
@@ -54,67 +54,51 @@ Navigate to respective dockerfile in the segmentation or object detection direct
     docker build -t detection .
 
 
-You can run the container in the background with screen
+**Run container**\
+Note that this container was run on a multi instance GPU (A100). With a normal GPU replace --gpus device=0:0 with gpus all
 
-    screen -S segmentation
-
-
-
-**Without notebook**
-
-mig 1
         docker run -it --gpus device=0:0 -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog/:/workspace/lidar segmentation:latest bash
 
         
-
-mig 2
-        docker run -it --gpus device=0:1 -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog/:/workspace/lidar segmentation:latest bash
-
+There is also an option to run this container as a notebook. This was run on a server with port forwarding over VPN and SSH.
 
 
     docker run -it --rm -p 8882:8882 --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog/:/workspace/lidar segmentation:latest bash
-
-    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog/:/workspace/lidar segmentation:latest bash
 
     cd /workspace/code/notebooks/
 
     jupyter lab --ip=0.0.0.0 --port=8882 --allow-root --no-browser --NotebookApp.allow_origin='*'
 
-    ssh -L 8882:localhost:8882 william@193.10.101.143
+    ssh -L 8881:localhost:8881 <IPADRESS_TO_SERVER>
 
+# Training and testing data
+The training data were collected from multiple sources. Historical forest maps from local archives where digitized and georeferenced. Open data from the [swedish national heritage board were downloaded and digitized](https://pub.raa.se/). All remains where referenced with the liDAR data in order to match the reported remain to the LiDAR data. In total 2519 hunting pits where manually digitized and corrected this way (figure 1a). A seperate demo area was also used for visual inspection (figure ab)
 
-    ssh -L 8881:localhost:8881 wmli0001@lidar1-1.ad.slu.se
+<img src="images/Figure_1.png" alt="Study area" width="100%"/>\
+Figure 1: Locations of hunting pits used in this study. In total, 2519 hunting pits were manually mapped in northern Sweden. Some 80% of the hunting pits were used for training the models while 20% were used for testing. 
 
-cd5492c48e18948f8cbfa47acbf0697ea5f95bdc472f865c
-
-# Training data
-The training data were collected from multiple sources. Historical forest maps from local archives where digitized and georeferenced. Open data from the [swedish national heritage board were downloaded and digitized](https://pub.raa.se/). All remains where referenced with the liDAR data in order to match the reported remain to the LiDAR data. In total x hunting pits where manually digitized and corrected this way.
 
 ## Create digital elevation model
-The laser data contained 1-2 points / m2 and can be downloaded from Lantmäteriet: https://www.lantmateriet.se/en/geodata/geodata-products/product-list/laser-data-download-forest/. The Laser data is stored as .laz tiles where each tile is 2 500 m x 2 500 m
+The laser data contained 1-2 points / m2 and can be downloaded from Lantmäteriet: https://www.lantmateriet.se/en/geodata/geodata-products/product-list/laser-data-download-forest/. The Laser data is stored as .laz tiles where each tile is 2 500 m x 2 500 m.
 
 **Select lidar tiles based on location of training data**\
-First pool all laz files in a single directory
+First pool all laz files in a single directory.
 
     python /workspace/code/tools/pool_laz.py
 
-Then Create a shapefile tile index of all laz tiles in the pooled directory
+Then Create a shapefile tile index of all laz tiles in the pooled directory.
 
     python /workspace/code/tools/lidar_tile_footprint.py /workspace/lidar/pooled_laz_files/ /workspace/data/footprint.shp
 
-Use the shapefile tile index and a shapefile of all field data to create a polygon that can be used to select and copy relevant laz tilesto a new directory
+Use the shapefile tile index and a shapefile of all field data to create a polygon that can be used to select and copy relevant laz tiles to a new directory.
 
     python /workspace/code/tools/copy_laz_tiles.py /workspace/data/footprint.shp /workspace/code/data/Hunting_pits_covered_by_lidar.shp /workspace/lidar/pooled_laz_files/ /workspace/data/selected_lidar_tiles_pits/
 
+Create digital elevation models from the selected lidar data
 
-
-Finally use whitebox tools to create digital elevation models from the selected lidar data
-**Training and testing areas**
     python /workspace/code/tools/laz_to_dem.py /workspace/data/selected_lidar_tiles_pits/ /workspace/data/dem_tiles_pits/ 0.5
 
     python /workspace/code/tools/laz_to_dem.py /workspace/data/selected_lidar_tiles_pits/ /workspace/data/dem_tiles_pits_1m/ 1.0
-
-    python /workspace/code/tools/laz_to_dem.py /workspace/data/selected_lidar_tiles_pits/ /workspace/data/dem_tiles_pits_test/ 1.0
 
 <br/>
 
@@ -138,8 +122,18 @@ This script extracts the topographical indices and normalizes them between 0 and
 
     python /workspace/code/Extract_topographcical_indices_1m.py /workspace/temp/ /workspace/data/dem_tiles_pits_1m/ /workspace/data/topographical_indices_normalized_pits_1m/hillshade/ /workspace/data/topographical_indices_normalized_pits_1m/maxelevationdeviation/ /workspace/data/topographical_indices_normalized_pits_1m/multiscaleelevationpercentile/ /workspace/data/topographical_indices_normalized_pits_1m/minimal_curvature/ /workspace/data/topographical_indices_normalized_pits_1m/maximal_curvature/ /workspace/data/topographical_indices_normalized_pits_1m/profile_curvature/ /workspace/data/topographical_indices_normalized_pits_1m/stdon/ /workspace/data/topographical_indices_normalized_pits_1m/multiscale_stdon/ /workspace/data/topographical_indices_normalized_pits_1m/elevation_above_pit/ /workspace/data/topographical_indices_normalized_pits_1m/depthinsink/
     
-<img src="images/distribution.PNG" alt="Distribution of normalized topographical indicies" width="50%"/>\
-Distribution of the normalised topographical indices from one tile.
+## Demonstration area
+Extract dems
+    python /workspace/code/tools/laz_to_dem.py /workspace/data/demo_area/tiles/ /workspace/data/demo_area/dem_tiles/ 0.5
+
+    python /workspace/code/tools/laz_to_dem.py /workspace/data/demo_area/tiles/ /workspace/data/demo_area/dem_tiles_1m/ 1.0
+
+
+**Calculate topographical indicies for demo area**
+
+    python /workspace/code/Extract_topographcical_indices_05m.py /workspace/temp/ /workspace/data/demo_area/dem_tiles/ /workspace/data/demo_area/topographical_indicies_05m/hillshade/ /workspace/data/demo_area/topographical_indicies_05m/maxelevationdeviation/ /workspace/data/demo_area/topographical_indicies_05m/multiscaleelevationpercentile/ /workspace/data/demo_area/topographical_indicies_05m/minimal_curvature/ /workspace/data/demo_area/topographical_indicies_05m/maximal_curvature/ /workspace/data/demo_area/topographical_indicies_05m/profile_curvature/ /workspace/data/demo_area/topographical_indicies_05m/stdon/ /workspace/data/demo_area/topographical_indicies_05m/multiscale_stdon/ /workspace/data/demo_area/topographical_indicies_05m/elevation_above_pit/ /workspace/data/demo_area/topographical_indicies_05m/depthinsink/
+
+    python /workspace/code/Extract_topographcical_indices_1m.py /workspace/temp/ /workspace/data/demo_area/dem_tiles_1m/ /workspace/data/demo_area/topographical_indicies_1m/hillshade/ /workspace/data/demo_area/topographical_indicies_1m/maxelevationdeviation/ /workspace/data/demo_area/topographical_indicies_1m/multiscaleelevationpercentile/ /workspace/data/demo_area/topographical_indicies_1m/minimal_curvature/ /workspace/data/demo_area/topographical_indicies_1m/maximal_curvature/ /workspace/data/demo_area/topographical_indicies_1m/profile_curvature/ /workspace/data/demo_area/topographical_indicies_1m/stdon/ /workspace/data/demo_area/topographical_indicies_1m/multiscale_stdon/ /workspace/data/demo_area/topographical_indicies_1m/elevation_above_pit/ /workspace/data/demo_area/topographical_indicies_1m/depthinsink/
 
 # Semantic segmentation
 Semantic segmentation uses masks where each pixel in the mask coresponds to a class. In our case the classes are:
@@ -147,10 +141,6 @@ Semantic segmentation uses masks where each pixel in the mask coresponds to a cl
 0. Background values
 1. Hunting pits
 
-    
-
-<img src="images/Hunting_kids.jpg" alt="Study area" width="75%"/>\
-The left image is a hunting pit (kids for scale) and the right image is the same hunting pit in the digital elevation model.
 
 
 ## Create segmentation masks
@@ -197,187 +187,51 @@ Use the object detection docker image to create bounding boxes.
 
     python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/split_segmentations_masks_05m/ 250 0 /workspace/data/object_detection/bounding_boxes_05m/
 
-
-failed at 18006.tif, 26039.tif, 
-
-
     python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/split_segmentations_masks_1m/ 250 0 /workspace/data/object_detection/bounding_boxes_1m/
-
-failed at 6214.tif 19707.tif    20079.tif
-
-
-
-
 
 
 **copy image chips and bounding boxes to the final directory**
+
     python /workspace/code/tools/copy_correct_chips.py /workspace/data/split_data_pits_05m/  /workspace/data/object_detection/bounding_boxes_05m/ /workspace/data/final_data_05m/training/
 
     python /workspace/code/tools/copy_correct_chips.py /workspace/data/split_data_pits_1m/  /workspace/data/object_detection/bounding_boxes_1m/ /workspace/data/final_data_1m/training/
 
 
-**Create data split and move test data to new directories**
+**Create data split and move test data to new directories**\
 create data split between training and testing using this script. The batch script partition_data.sh cleans the test data directories and moves the test chips to respective test directory using a 80% vs 20% train / test split. Run it with:
     
     ./partition_data_05m.sh
     ./partition_data_1m.sh
 
-    python /workspace/code/object_detection/YoloBBoxChecker/main.py
+Figure 2 shows some examples of how one image chip in the training data looks. 
+<img src="images/Figure_2.png" alt="Study area" width="100%"/>\
+Figure 2: An example of one of the image chips used to train the deep learning models. Each topographical index was selected to highlight the local topography to make it easier for the deep learning model to learn how hunting pits appear in the LiDAR data. The segmentation mask was used as the label for the segmentation model, while the bounding boxes were used for the object detection model. The chips displayed here are from a DEM with 0.5 m resolution.
 
+# Transfer learning with the moon
+ We chose to use impact craters on the lunar surface as a transfer learning strategy. The idea was that impact craters are pits in a lunar DEM, and so would be similar enough to hunting pits on Earth to give our models a better starting point than random initialized weights (figure 3). 
+  <img src="images/figure_3.png" alt="Study area" width="100%"/>
+Figure 3: To the left is an example of how an impact creater looks in the data from the lunar orbiter and to the right is an example of how a hunting pit looks in the Swedish DEM.
 
-# Train and evaluate Unet
+## Lunar data
+The craters were digitized by NASA and were available from the [Moon Crater Database v1](https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2018JE005592). The database contained approximately 1.3 million lunar impact craters and were approximately complete for all craters larger than about 1–2 km in diameter. Craters were manually identified and measured with data from the Lunar Reconnaissance Orbiter. The Lunar Orbiter Laser Altimeter, which was located on the LRO spacecraft, was used to create a DEM of the moon with a resolution of 118 m
 
+## Create segmentation masks and bounding boxes from impact creaters
 
-The training and evaluation of test chips can be done with these batch scripts:
-
-        ./Pre_train_UNets_with_the_moon.sh
-        ./train_test_unet_05m.sh
-        ./train_test_unet_1m.sh
-        ./train_test_xception_unet_05m.sh
-        ./train_test_xception_unet_1m.sh
-
-# Evaluate as objects
-
-    python /workspace/code/semantic_segmentation/evlaute_as_objects.py /workspace/data/final_data_05m/testing/polygon_labels/ /workspace/data/final_data_05m/testing/inference_XceptionUNet/05m/inference_polygon/minimal_curvature/ 
-
-**Demo area**
-Extrat dems
-    python /workspace/code/tools/laz_to_dem.py /workspace/data/demo_area/tiles/ /workspace/data/demo_area/dem_tiles/ 0.5
-
-    python /workspace/code/tools/laz_to_dem.py /workspace/data/demo_area/tiles/ /workspace/data/demo_area/dem_tiles_1m/ 1.0
-    python /workspace/code/tools/laz_to_dem.py /workspace/data/demo_area/tiles/ /workspace/data/demo_area/dem_tiles_test/ 1.0
-
-Calculate topoindicies
-
-    python /workspace/code/Extract_topographcical_indices_05m.py /workspace/temp/ /workspace/data/demo_area/dem_tiles/ /workspace/data/demo_area/topographical_indicies_05m/hillshade/ /workspace/data/demo_area/topographical_indicies_05m/maxelevationdeviation/ /workspace/data/demo_area/topographical_indicies_05m/multiscaleelevationpercentile/ /workspace/data/demo_area/topographical_indicies_05m/minimal_curvature/ /workspace/data/demo_area/topographical_indicies_05m/maximal_curvature/ /workspace/data/demo_area/topographical_indicies_05m/profile_curvature/ /workspace/data/demo_area/topographical_indicies_05m/stdon/ /workspace/data/demo_area/topographical_indicies_05m/multiscale_stdon/ /workspace/data/demo_area/topographical_indicies_05m/elevation_above_pit/ /workspace/data/demo_area/topographical_indicies_05m/depthinsink/
-
-    python /workspace/code/Extract_topographcical_indices_1m.py /workspace/temp/ /workspace/data/demo_area/dem_tiles_1m/ /workspace/data/demo_area/topographical_indicies_1m/hillshade/ /workspace/data/demo_area/topographical_indicies_1m/maxelevationdeviation/ /workspace/data/demo_area/topographical_indicies_1m/multiscaleelevationpercentile/ /workspace/data/demo_area/topographical_indicies_1m/minimal_curvature/ /workspace/data/demo_area/topographical_indicies_1m/maximal_curvature/ /workspace/data/demo_area/topographical_indicies_1m/profile_curvature/ /workspace/data/demo_area/topographical_indicies_1m/stdon/ /workspace/data/demo_area/topographical_indicies_1m/multiscale_stdon/ /workspace/data/demo_area/topographical_indicies_1m/elevation_above_pit/ /workspace/data/demo_area/topographical_indicies_1m/depthinsink/
-
-**Inference using the best indices**
-
-
-    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_05m/minimal_curvature /workspace/data/logfiles/UNet/05m/minimal_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_05m/inference/ UNet --classes 0,1
-    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_1m/minimal_curvature /workspace/data/logfiles/UNet/1m/minimal_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_1m/inference/ UNet --classes 0,1
-
-    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_05m/maximal_curvature /workspace/data/logfiles/ExceptionUNet/05m/maximal_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_05m/inference_exception/ XceptionUNet --classes 0,1
-    python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_1m/profile_curvature /workspace/data/logfiles/ExceptionUNet/1m/profile_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_1m/inference_exception/ XceptionUNet --classes 0,1    
-
-**convert test labels to polygon**
-    Y:\William\GitHub\Remnants-of-charcoal-kilns\tools\labels_to_polygons.py
-
-**convert test predictions to polygon**
-
-    python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/demo_area/topographical_indicies_05m/inference_exception/ /workspace/data/demo_area/topographical_indicies_05m/inference_exception_post_processed/ --output_type=polygon --min_area=30 --min_ratio=-1
-    python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/demo_area/topographical_indicies_1m/inference_exception/ /workspace/data/demo_area/topographical_indicies_1m/inference_exception_post_processed/ --output_type=polygon --min_area=30 --min_ratio=-1
-
-
-
-
-
-
-# Inference_Sweden
-
-    * laz to DEM
-    * DEM to topographical index
-    * inference on topographical index
-    * post processing on infered result
-
-
-
-
-
-
-
-
-# Object detection
-This section uses the docker container tagged "detection". the segmentation container is used for some steps since I have not figured out how to install gdal in the detection container.   
-
-    screen -S detection
-
-
-    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/ramdisk:/workspace/temp -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar segmentation:latest
-
-
-
-
-**Partition training data**\
- The data is split into training data, testing data and validation data. The traning data will be used to train the model and validation data will be used to experiment while the testing data is held for the final results. The datasplit was already done during the segmentation and will be reused for the object detection.
- 
-
-    
-
-
-
-# Transfer learning
-
-![alt text](images/Crater.png)
-
-## Data description
-Impact creaters from the moon were used to pre-train the model. These creaters were digitised by NASA and are avalible from the Moon Crater Database v1 Robbins:https://astrogeology.usgs.gov/search/map/Moon/Research/Craters/lunar_crater_database_robbins_2018 The database contains approximately 1.3 million lunar impact craters and is approximately complete for all craters larger than about 1–2 km in diameter. Craters were manually identified and measured on Lunar Reconnaissance Orbiter (LRO) Camera (LROC) Wide-Angle Camera (WAC) images, in LRO Lunar Orbiter Laser Altimeter (LOLA) topography, SELENE Kaguya Terrain Camera (TC) images, and a merged LOLA+TC DTM.
-
-
-The Moon LRO LOLA DEM 118m v1 was used as digital elevation model. This digital elevation model  is based on data from the Lunar Orbiter Laser Altimeter, an instrument on the National Aeronautics and Space Agency (NASA) Lunar Reconnaissance Orbiter (LRO) spacecraft. The created DEM represents more than 6.5 billion measurements gathered between July 2009 and July 2013, adjusted for consistency in the coordinate system described below, and then converted to lunar radii.
-Source: https://astrogeology.usgs.gov/search/details/Moon/LRO/LOLA/Lunar_LRO_LOLA_Global_LDEM_118m_Mar2014/cub
-
-## Select craters
-The charcoal kilns in the trainig data were between x and y pixels with an average of z in diameter. Therefore creaters that were less than x pixels (of the lundar dem) were excluded. creaters larger than y pixels were resampled down to z pixels. The following criterias:
-
-    1. They can not overlap any nearby creaters.
-    2. They have to be about the same size range as charcoal kilns in number of pixels.
-    3. min and max lat and log values to avoid deformed craters?
-
-
-
-## Evaluate model
-    python Y:/William/GitHub/Remnants-of-charcoal-kilns/evaluate_model.py Y:/William/Kolbottnar/data/selected_data/hillshade/ Y:/William/Kolbottnar/data/selected_data/labels/ Y:/William/Kolbottnar/logs/log43/valid_imgs.txt Y:/William/Kolbottnar/logs/log43/test.h5 Y:/William/Kolbottnar/logs/log43/evaluation.csv --wo_crf
-
-## Run inference
-    python Y:/William/GitHub/Remnants-of-charcoal-kilns/inference.py Y:/William/Kolbottnar/data/topographical_indices/hillshade/ Y:/William/Kolbottnar/logs/log34/test.h5 D:/kolbottnar/inference/34_inference/ --tile_size=256 --wo_crf
-
-## postprocessing
-**min_area** is extracted from the smallest kiln in the training data.  
-**min_ratio** is the perimeter to area ratio of the vector polygons. -0.3 is based on the training data.  
-
-    python Y:/William/GitHub/Remnants-of-charcoal-kilns/post_processing.py D:/kolbottnar/inference/34_inference/ D:/kolbottnar/inference/34_post_processing/raw_polygons/ D:/kolbottnar/inference/34_post_processing/filtered_polygons/ --min_area=400 --min_ratio=-0.3
- 
-
-# Transfer learning
-
-## The moon
-
-The Lunar creaters were then used to create a binary raster mask where 1 is a creater and 0 is background. Creaters between x and x latidude were selected to avoid distorted creaters near the poles. Two segmentation masks were created. 1 for segmentation and 1 for object detection. source: https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2018JE005592 
+The Lunar creaters were used to create a binary raster mask where 1 is a creater and 0 is background. Two segmentation masks were created. 1 for segmentation and 1 for object detection. The reason is that each creater needs a uniqe ID for the conversion to bounding boxes source:  
     
     python /workspace/code/tools/create_segmentation_masks.py /workspace/data/lunar_data/dem_lat_50/ /workspace/data/lunar_data/Catalog_Moon_Release_20180815_shapefile180/Catalog_Moon_Release_20180815_1kmPlus_180.shp Classvalue /workspace/data/lunar_data/topographical_indices_normalized/labels/
 
     python /workspace/code/tools/create_segmentation_masks.py /workspace/data/lunar_data/dem_lat_50/ /workspace/data/lunar_data/Catalog_Moon_Release_20180815_shapefile180/Catalog_Moon_Release_20180815_1kmPlus_180.shp FID /workspace/data/lunar_data/topographical_indices_normalized/object_labels/
 
-
-**Extract topographical indices**
+## Extract and normalize topographical indices from the lunar DEM
+**Extract topographical indices**\
+The same topographical indices described above were extracted from the lunar DEM.
 
     python /workspace/code/Extract_topographcical_indices_05m.py /workspace/temp/ /workspace/data/lunar_data/dem_lat_50/ /workspace/data/lunar_data/topographical_indices_normalized/hillshade/ /workspace/data/lunar_data/topographical_indices_normalized/maxelevationdeviation/ /workspace/data/lunar_data/topographical_indices_normalized/multiscaleelevationpercentile/ /workspace/data/lunar_data/topographical_indices_normalized/minimal_curvature/ /workspace/data/lunar_data/topographical_indices_normalized/maximal_curvature/ /workspace/data/lunar_data/topographical_indices_normalized/profile_curvature/ /workspace/data/lunar_data/topographical_indices_normalized/stdon/ /workspace/data/lunar_data/topographical_indices_normalized/multiscale_stdon/ /workspace/data/lunar_data/topographical_indices_normalized/elevation_above_pits/ /workspace/data/lunar_data/topographical_indices_normalized/depthinsink/
 
-**Split lunar data into 250x250 chips**
+**Split lunar data into image chips**
 
     ./workspace/code/split_indicies_moon.sh
-
-
-example Split minimal_curvature
-
-python /workspace/code/tools/split_training_data.py /workspace/data/lunar_data/topographical_indices_normalized/minimal_curvature/ /workspace/data/lunar_data/split_data/minimal_curvature/ --tile_size 250
-python /workspace/code/tools/split_training_data.py /workspace/data/lunar_data/topographical_indices_normalized/labels/ /workspace/data/lunar_data/split_data/labels/ --tile_size 250
-python /workspace/code/tools/split_training_data.py /workspace/data/lunar_data/topographical_indices_normalized/hillshade/ /workspace/data/lunar_data/split_data/hillshade/ --tile_size 250
-
-
-**Convert selected segmentation masks to bounding boxes**
-
-Use the object detection docker image to create bounding boxes.
-
-    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar detection:latest bash
-
-    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/lunar_data/split_data/object_labels/ 250 0 /workspace/data/lunar_data/bounding_boxes/
-
-    python /workspace/code/tools/copy_correct_chips.py /workspace/data/lunar_data/split_data/ /workspace/data/lunar_data/bounding_boxes/ /workspace/data/lunar_data/final_data/training/
-
 
     ./code/partition_data_moon.sh
 
@@ -393,11 +247,78 @@ Use the object detection docker image to create bounding boxes.
 
     ./workspace/code/semantic_segmentation/train_test_unet_moon.sh
 
-# CA-NET
-Comprehensive Attention Convolutional Neural Networks
+**Convert selected segmentation masks to bounding boxes**
+
+Just like before we used the object detection docker image to create bounding boxes.
+
+    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar detection:latest bash
+
+    python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/lunar_data/split_data/object_labels/ 250 0 /workspace/data/lunar_data/bounding_boxes/
+
+    python /workspace/code/tools/copy_correct_chips.py /workspace/data/lunar_data/split_data/ /workspace/data/lunar_data/bounding_boxes/ /workspace/data/lunar_data/final_data/training/
+# Semantic segmentation
+
+## Transfer learning and training
+The training and evaluation of test chips were done with these batch scripts:
+
+        ./Pre_train_UNets_with_the_moon.sh
+        ./train_test_unet_05m.sh
+        ./train_test_unet_1m.sh
+        ./train_test_xception_unet_05m.sh
+        ./train_test_xception_unet_1m.sh
+
+## Evaluation on test data
+Since we are interested in detecting hunting pits not pixels the evaluation was done on an object basis instead of pixel by pixel. The detected pixels were converted to polygons and then intersected with hunting pits. 
+
+    python /workspace/code/semantic_segmentation/evlaute_as_objects.py /workspace/data/final_data_05m/testing/polygon_labels/ /workspace/data/final_data_05m/testing/inference_XceptionUNet/05m/inference_polygon/minimal_curvature/ 
+
+## Evaluation on demo area
 
 
-## contact information
+**Inference using the best indices**
+
+
+    time python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_05m/minimal_curvature /workspace/data/logfiles/UNet/05m/minimal_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_05m/inference/ UNet --classes 0,1 --tile_size 250
+    time python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_1m/minimal_curvature /workspace/data/logfiles/UNet/1m/minimal_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_1m/inference/ UNet --classes 0,1 --tile_size 250
+
+    time python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_05m/maximal_curvature /workspace/data/logfiles/ExceptionUNet/05m/maximal_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_05m/inference_exception/ XceptionUNet --classes 0,1 --tile_size 250
+    time python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_1m/profile_curvature /workspace/data/logfiles/ExceptionUNet/1m/profile_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_1m/inference_exception/ XceptionUNet --classes 0,1 --tile_size 250     
+
+**convert test labels to polygon**
+    Y:\William\GitHub\Remnants-of-charcoal-kilns\tools\labels_to_polygons.py
+
+**convert test predictions to polygon**
+
+    python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/demo_area/topographical_indicies_05m/inference_exception/ /workspace/data/demo_area/topographical_indicies_05m/inference_exception_post_processed/ --output_type=polygon --min_area=30 --min_ratio=-1
+    python /workspace/code/semantic_segmentation/post_processing.py /workspace/temp/ /workspace/data/demo_area/topographical_indicies_1m/inference_exception/ /workspace/data/demo_area/topographical_indicies_1m/inference_exception_post_processed/ --output_type=polygon --min_area=30 --min_ratio=-1
+
+
+
+# Object detection
+
+## Create bounding boxes
+
+## Train YOLO
+
+## Evaluate YOLO
+
+## Inference YOLO
+
+
+# Results
+Three deep learning architectures were evaluated for 10 different topographical indices extracted from DEMs with two resolutions. The U-net model trained on the topographical index profile curvature from a 0.5 m DEM was the most accurate method with an F1 score of 0.76. This method was able to map 70% of all hunting pits and had a false positive rate of 15% when evaluated on the test data.
+
+  <img src="images/figure_4.png" alt="Study area" width="75%"/>
+
+## Performance on test data
+The evaluation was carried out in two parts. First, the performance using the 20% test data that had been set aside was assessed. Second, the best combination of DEM resolution and topographical index was applied to a separate demonstration area for visual inspection. The models that were trained on topographical indices from a 0.5m DEM were more accurate than models trained on topographical indices from a 1 m DEM, shown as higher recall and precision in Figure 4. 
+
+## Performance in demonstration area
+<img src="images/figure_5.png" alt="Study area" width="75%"/>
+# Acknowledgements
+We thank the Swedish forest agency for digitizing part of the hunting pits used in this study. This work was partially supported by the Wallenberg AI, Autonomous Systems and Software Program – Humanities and Society (WASP-HS) funded by the Marianne and Marcus Wallenberg Foundation, the Marcus and Amalia Wallenberg Foundation, KEMPE and the Swedish forest agency.
+
+## Contact information
 Mail:
 <William.lidberg@slu.se>\
 Phone:
@@ -406,4 +327,4 @@ Phone:
 ## License
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-# References
+
