@@ -281,7 +281,7 @@ Transfer learning improved the stability of the models and increased the accurac
  <img src="images/transfer_learning_F1_curves.PNG" alt="Transfer learning" width="75%"/>
 
 Transfer learning improved the result for all UNet models.
- <img src="images/transfer_learning.png" alt="Transfer learning" width="75%"/>
+ <img src="images/transfer_learning.PNG" alt="Transfer learning" width="75%"/>
 
 ## Evaluation on test data
 Since we are interested in detecting hunting pits not pixels the evaluation was done on an object basis instead of pixel by pixel. The detected pixels were converted to polygons and then intersected with hunting pits. 
