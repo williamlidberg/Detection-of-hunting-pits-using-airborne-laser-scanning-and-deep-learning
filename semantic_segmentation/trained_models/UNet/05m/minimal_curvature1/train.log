@@ -1,0 +1,7 @@
+2023-06-02 12:30:26 root - INFO - Class weights set to: None
+2023-06-02 12:30:26 root - INFO - Class weights set to: None
+2023-06-02 12:30:29 root - INFO - loaded weights from /workspace/data/logfiles/moon/unet/trained.h5
+2023-06-02 12:30:29 root - INFO - start training
+2023-06-02 12:30:29 tensorflow - WARNING - `write_grads` will be ignored in TensorFlow 2.0 for the `TensorBoard` Callback.
+2023-06-02 12:30:29 tensorflow - WARNING - `batch_size` is no longer needed in the `TensorBoard` Callback and will be ignored in TensorFlow 2.0.
+2023-06-02 12:59:12 root - INFO - end training

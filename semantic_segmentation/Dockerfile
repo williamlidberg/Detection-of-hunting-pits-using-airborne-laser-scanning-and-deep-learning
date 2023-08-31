@@ -33,41 +33,8 @@ RUN pip install jupyterlab
 RUN mkdir /workspace/data
 RUN mkdir /workspace/code
 RUN mkdir /workspace/temp
-
+RUN mkdir /workspace/temp_inference
+RUN mkdir /workspace/repo
+COPY . /workspace/repo/
 WORKDIR /workspace/code
 
-
-
-# FROM tensorflow/tensorflow:latest-gpu-jupyter
-
-# RUN echo "Custom container downloaded!"
-# RUN apt-get -y update --fix-missing
-# RUN apt-get -y install libopencv-highgui-dev ffmpeg libsm6 libxext6 software-properties-common
-# RUN pip install --upgrade pip
-
-# RUN pip install whitebox
-# RUN pip install matplotlib==3.5.1 
-# RUN pip install opencv-python==4.5.5.64 
-# RUN pip install tifffile==2022.4.26
-# RUN pip install pandas==1.4.2 
-# RUN pip install scikit-learn==1.0.2
-# RUN pip install geopandas==0.10.2 
-# RUN pip install splitraster==0.3.2
-# RUN pip install rasterio==1.2.10 
-# RUN pip install leafmap==0.9.1
-# RUN pip install rtree==1.0.0
-# RUN pip install torch
-# RUN pip install torchvision
-# RUN pip install jupyterlab
-# RUN pip install seaborn
-# RUN echo "Installed python packages!"
-
-# RUN add-apt-repository ppa:ubuntugis/ppa && apt-get update
-# RUN apt-get install gdal-bin -y
-# RUN apt-get install libgdal-dev -y
-# RUN export CPLUS_INCLUDE_PATH=/usr/include/gdal
-# RUN export C_INCLUDE_PATH=/usr/include/gdal
-# RUN pip install GDAL
-# RUN echo "Gdal installed!"
-
-# RUN mkdir -p /workspace/temp

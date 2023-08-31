@@ -6,11 +6,17 @@
 
 # Detection-of-hunting-pits-using-LiDAR-and-deep-learning
 
-You can pull this docker image and run the best model on your own data.
+You can pull this docker image and run the best model on your own data (a 0.5m DEM).
  
-Pull xxxx
+    Pull williamlidberg/hunting_pits:v1
+And run the docker image and mounting a volume where your 0.5 m DEMs is located. Replace the path after -v and before : with your path.
 
-Docker run....
+    docker run -it --gpus all -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data williamlidberg/hunting_pits:v1 bash
+
+Inside the container you can run the model on a test chip by using this command:
+
+    python /workspace/repo/semantic_segmentation/inference_unet_from_dem.py /workspace/repo/data/test_chip/dem/ /workspace/repo/semantic_segmentation/trained_models/UNet/05m/profile_curvature1/trained.h5 /workspace/data/
+
 
 ## AIM
 The aim was to investigate whether hunting pits could be automatically mapped using Swedish national ALS data and deep learning. We also evaluated the performance of traditional topographical indices and multiple state-of-the-art topographical indices explicitly selected to enhance pit structures in high-resolution DEM data. 
@@ -66,13 +72,13 @@ Navigate to respective dockerfile in the segmentation or object detection direct
 **Run container**\
 Note that this container was run on a multi instance GPU (A100). With a normal GPU replace --gpus device=0:0 with gpus all
 
-    docker run -it --gpus device=0:0 -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog/:/workspace/lidar segmentation:latest bash
+    docker run -it --gpus device=0:0 -v /mnt/Extension_100TB/William/GitHub/Detection-of-hunting-pits-using-airborne-laser-scanning-and-deep-learning:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog/:/workspace/lidar segmentation:latest bash
 
         
 There is also an option to run this container as a notebook. This was run on a server with port forwarding over VPN and SSH.
 
 
-    docker run -it --rm -p 8882:8882 --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog/:/workspace/lidar segmentation:latest bash
+    docker run -it --rm -p 8882:8882 --gpus all -v /mnt/Extension_100TB/William/GitHub/Detection-of-hunting-pits-using-airborne-laser-scanning-and-deep-learning:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog/:/workspace/lidar segmentation:latest bash
 
     cd /workspace/code/notebooks/
 
@@ -177,7 +183,7 @@ Bounding boxes can be created from segmentation masks if each object has a uniqe
 
 Use the object detection docker image to create bounding boxes.
 
-    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar detection:latest
+    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Detection-of-hunting-pits-using-airborne-laser-scanning-and-deep-learning:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar detection:latest
 
     python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/object_detection/split_segmentations_masks_05m/ 250 0 /workspace/data/object_detection/bounding_boxes_05m/
 
@@ -259,7 +265,7 @@ The same topographical indices described above were extracted from the lunar DEM
 
 Just like before we used the object detection docker image to create bounding boxes.
 
-    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Remnants-of-charcoal-kilns:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar detection:latest bash
+    docker run -it --gpus all -v /mnt/Extension_100TB/William/GitHub/Detection-of-hunting-pits-using-airborne-laser-scanning-and-deep-learning:/workspace/code -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data -v /mnt/Extension_100TB/national_datasets/laserdataskog:/workspace/lidar detection:latest bash
 
     python /workspace/code/object_detection/masks_to_boxes.py /workspace/temp/ /workspace/data/lunar_data/split_data/object_labels/ 250 0 /workspace/data/lunar_data/bounding_boxes/
 
@@ -293,14 +299,13 @@ The best models for each resolution were used to map hunting pits in a demonstra
 **Inference using the best indices**
 
 
-    time python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_05m/minimal_curvature /workspace/data/logfiles/UNet/05m/minimal_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_05m/inference/ UNet --classes 0,1 --tile_size 250
+    time python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_05m/profile_curvature /workspace/data/logfiles/UNet/05m/minimal_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_05m/inference/ UNet --classes 0,1 --tile_size 250
     time python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_1m/minimal_curvature /workspace/data/logfiles/UNet/1m/minimal_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_1m/inference/ UNet --classes 0,1 --tile_size 250
 
-    time python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_05m/maximal_curvature /workspace/data/logfiles/ExceptionUNet/05m/maximal_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_05m/inference_exception/ XceptionUNet --classes 0,1 --tile_size 250
     time python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_1m/profile_curvature /workspace/data/logfiles/ExceptionUNet/1m/profile_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_1m/inference_exception/ XceptionUNet --classes 0,1 --tile_size 250     
 
 **convert test labels to polygon**
-    Y:\William\GitHub\Remnants-of-charcoal-kilns\tools\labels_to_polygons.py
+    Y:\William\GitHub\Detection-of-hunting-pits-using-airborne-laser-scanning-and-deep-learning\tools\labels_to_polygons.py
 
 **convert test predictions to polygon**
 
