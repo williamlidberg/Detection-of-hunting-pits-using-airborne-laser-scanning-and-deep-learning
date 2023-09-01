@@ -250,7 +250,8 @@ The same topographical indices described above were extracted from the lunar DEM
     ./code/partition_data_moon.sh
 
 ## Train a UNnet on the moon
--p 8888:8888 --mount type=bind,src=G:\moon\code,target=/workspace/code --mount type=bind,src=G:\moon\data,target=/workspace/data segmentation:latest
+
+
     docker run -it --gpus all --mount type=bind,src=G:\moon\code,target=/workspace/code --mount type=bind,src=G:\moon\data,target=/workspace/data segmentation:latest
 
 
@@ -305,6 +306,7 @@ The best models for each resolution were used to map hunting pits in a demonstra
     time python /workspace/code/semantic_segmentation/inference_unet.py -I /workspace/data/demo_area/topographical_indicies_1m/profile_curvature /workspace/data/logfiles/ExceptionUNet/1m/profile_curvature1/trained.h5 /workspace/data/demo_area/topographical_indicies_1m/inference_exception/ XceptionUNet --classes 0,1 --tile_size 250     
 
 **convert test labels to polygon**
+
     Y:\William\GitHub\Detection-of-hunting-pits-using-airborne-laser-scanning-and-deep-learning\tools\labels_to_polygons.py
 
 **convert test predictions to polygon**
@@ -315,12 +317,50 @@ The best models for each resolution were used to map hunting pits in a demonstra
 
 
 # Object detection
+## Installing YOLO
+To install the YoloR environment, follow the readme file in the object_detection folder.
+
+## Preprocessing YOLOR
+A number of preprocessing steps is required to use the data with YoloR.
+
+### Normalization
+The pixel values needs to be converter from 0.0-1.0 to 0.0-255.0 to be able to use the data in YoloR. This is done with the code in "object_detection/preprocessing_utils/normalize_recursive.py"
+Edit the source and destination paths in the file and run it with:
+    
+    python normalize_recursive.py
+
+### Rename label folders
+The contents of the labels folder in the dataset contains the UNET labelmasks and the Yolo labels are located in "the bounding_boxes" folder. Rename the "labels" folders to "Unet_labels" (of something similar). Rename the "bounding_boxs" folders to "labels".
+
+### Split dataset
+When training with YoloR the dataset must be split into a training and a test susbset. This is done with the code in "object_detection/ComposeTrainingDataset.py". Default split is 80% training and 20% testing.
+
+    python ComposeTrainingDataset.py --split_only=True --output_path datasets/final_data_1m_normalized/training/
+    python ComposeTrainingDataset.py --split_only=True --output_path datasets/final_data_05m_normalized/training/
+
+The splitting function will create a folder called "split" which include two files, train.txt and val.txt. These files includes one line per image with the path to the image. Note that the last folder in the path is "images" and not for example "hillshade". During training each of the indices folderns must be renamed to images when training each model. I.e. before training the hillshade model, the hillshade folder is renamed to images. Efter the training the name is chagned back to hillshade. 
+
+### Shrink boundingboxes
+The size of the boundingboxes are usually to large and have a lot of extra space around the pits. To shink the boxes run the code in "object_detection/preprocessing_utils/filter_yolo_boundingboxes.py"
+
+    python filter_yolo_boundingboxes.py --shrink-boxes <path to annotations where the .txt files are located>
+
+The code does not have an argument for 0.5m or 1m data (where the pits have different sizes in pixels), instead that is handled on line 70-81 in the code by commenting/uncommenting the code for 0.5m and 1m respectivly.
 
 ## Train YOLO
+To train the YoloR models for the 10 indices the script called TrainYolor.sh can be used. The script is located in the object_detection folder. The script must be edited to point to the dataset for the 0.5m or the 1m data.
+
+    ./TrainYolor.sh
 
 ## Evaluate YOLO
+To evaluate the models, first put the models from the training in a folder called eval under object_detection. Use the following format: "eval/models/${scale}/${subdir}". Where scale is "05m" or "1m" and subdir have one instance of each of the following: "depthinsink" "elevation_above_pit" "hillshade" "maxelevationdeviation" "maximal_curvature" "minimal_curvature" "multiscaleelevationpercentile" "multiscale_stdon" "profile_curvature" "stdon"
+
+    ./TestYoloR.sh
 
 ## Inference YOLO
+Use the best model from the evaluation (best_overall.pt) and put it in the inference folder in object_detection. Run this on CPU. 
+
+    python batch_inference_load_once.py --weights inference\best_overall.pt --source inference\images --output inference\output --img-size 256 --save-txt --cfg configurations\yolor_configurations\1_class\yolor_p6_fangstgropar_256x256.cfg --names configurations\fangstgropar.names --device cpu --output_path inference\output
 
 
 # Results

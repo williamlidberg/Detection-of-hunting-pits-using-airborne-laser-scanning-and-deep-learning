@@ -1,0 +1,6 @@
+train: /training_dataset/Images/train/
+val: /training_dataset/Images/val/
+
+
+nc: 1
+names: [ 'other' ]

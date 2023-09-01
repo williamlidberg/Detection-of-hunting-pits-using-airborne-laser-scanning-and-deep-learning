@@ -1,0 +1,32 @@
+{
+    "hillshade": {
+        "apis": [
+            "nationellhojdmodell_2_0"
+        ],
+        "prediction_masks": []
+    },
+    "hillshade_whitebox": {
+        "apis": [
+            "nationellhojdmodell_2_0_hillshade"
+        ],
+        "prediction_masks": []
+    },
+    "nationellhojdmodell_2_0_high_pass_median_filter": {
+        "apis": [
+            "nationellhojdmodell_2_0_high_pass_median_filter"
+        ],
+        "prediction_masks": []
+    },
+    "ortofoto_2_0": {
+        "apis": [
+            "ortofoto_2_0"
+        ],
+        "prediction_masks": []
+    },
+    "ortofoto_1_1": {
+        "apis": [
+            "ortofoto_1_1"
+        ],
+        "prediction_masks": []
+    }
+}

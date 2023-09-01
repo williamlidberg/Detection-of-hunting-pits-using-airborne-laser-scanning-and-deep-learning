@@ -1,0 +1,17 @@
+/__pycache__
+/pipeline_utils/__pycache__
+/yolov7
+/yolor
+/output
+/input
+/dataset
+/datasets
+/temp
+/temp_dataset
+/feature_layers
+/runs
+/mlflow
+/mlruns
+/runs
+/geopackage
+/yolo_dataset_fangstgropar_semi_auto_annotated_round_2

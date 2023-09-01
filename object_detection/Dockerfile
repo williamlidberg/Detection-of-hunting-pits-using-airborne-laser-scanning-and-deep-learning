@@ -1,19 +1,23 @@
-FROM ultralytics/yolov5:latest
-RUN pip install --upgrade pip
+FROM anibali/pytorch:1.8.1-cuda11.1-ubuntu20.04
 
-RUN pip install tifffile==2022.4.26
-RUN pip install	pybboxes==0.0.1
-RUN pip install	whitebox
-RUN pip install	geopandas==0.10.2
-RUN pip install	splitraster==0.3.2
-RUN pip install	rasterio
-RUN pip install tensorflow
-#RUN DEBIAN_FRONTEND=noninteractive apt-get install software-properties-common -y
-#RUN add-apt-repository ppa:ubuntugis/ppa && apt-get update
-#RUN apt-get install gdal-bin -y
-#RUN apt-get install libgdal-dev -y
-#RUN export CPLUS_INCLUDE_PATH=/usr/include/gdal
-#RUN export C_INCLUDE_PATH=/usr/include/gdal
-##RUN echo "Gdal installed!"
+USER root
+#RUN echo "deb [by-hash=no] http://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/cuda.list
+#RUN rm /etc/apt/sources.list.d/cuda.list && rm /etc/apt/sources.list.d/nvidia-ml.list
+#RUN sudo apt-get update
+ENV DEBIAN_FRONTEND=noninteractive
+WORKDIR /mnt/
 
-RUN mkdir -p /workspace/temp
+COPY ./ ./
+
+#ENV REQUESTS_CA_BUNDLE cacert.pem
+RUN apt-get -y update --fix-missing
+RUN apt-get install ffmpeg libsm6 libxext6  -y
+RUN apt-get -y install gdal-bin
+RUN apt-get -y install libgdal-dev
+RUN apt-get -y install g++
+RUN pip install gdal==$(ogrinfo --version | awk -F " " '{print $2}' | awk -F "," '{print $1}')
+
+RUN pip install -r requirements.txt
+
+
+RUN echo "Done installing packages in container!"

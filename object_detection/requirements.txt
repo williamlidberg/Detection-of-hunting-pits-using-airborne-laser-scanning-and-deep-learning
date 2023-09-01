@@ -1,0 +1,14 @@
+opencv-python==4.5.5.64
+matplotlib==3.5.1
+pyyaml==6.0
+scipy==1.8.0
+pandas==1.0.3
+geopandas==0.9.0
+exifread==2.3.2
+sweref99==0.2
+tensorboard>=2.8.0
+mlflow>=1.29.0
+tifffile>=2021.7.2
+whitebox>=2.2.0
+seaborn>=0.12.2
+imagecodecs

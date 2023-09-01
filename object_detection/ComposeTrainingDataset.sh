@@ -1,0 +1,1 @@
+python ComposeTrainingDataset.py --configuration hillshade --extents geopackage/output --output_path datasets/test
