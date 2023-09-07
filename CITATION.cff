@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Lidberg"
+  given-names: "William"
+  orcid: "https://orcid.org/0000-0001-5780-5596"
+- family-names: "Westphal"
+  given-names: "Florian"
+  orcid: "https://orcid.org/0000-0002-2161-7371" 
+- family-names: "Brax"
+  given-names: "Christoffer "
+  orcid:  
+title: "Detection-of-hunting-pits-using-airborne-laser-scanning-and-deep-learning"
+version: 1.0.0
+doi: 
+date-released: 2023-09-07
+url: "https://github.com/williamlidberg/Detection-of-hunting-pits-using-airborne-laser-scanning-and-deep-learning"
