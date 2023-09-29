@@ -1,6 +1,9 @@
 import os
 import argparse
+import os
+os.environ["WBT_LINUX"] = "MUSL"
 import whitebox
+whitebox.download_wbt(linux_musl=True, reset=True)
 wbt = whitebox.WhiteboxTools()
 
 def laz_to_dem(laz_dir, resolution):
