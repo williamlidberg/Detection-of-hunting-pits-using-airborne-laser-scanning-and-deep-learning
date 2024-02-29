@@ -8,8 +8,8 @@
 
 You can pull this docker image and run the best model on your own data (a 0.5m DEM).
  
-    Pull williamlidberg/hunting_pits:v1
-And run the docker image and mounting a volume where your 0.5 m DEMs is located. Replace the path after -v and before : with your path.
+    docker image pull williamlidberg/hunting_pits:v1
+And run the docker image and mounting a volume where your 0.5 m DEMs is located. Replace the path after -v and before : with your path. If you don't have a GPU you can remove the "--gpus all" part and the model will run on CPU.
 
     docker run -it --gpus all -v /mnt/Extension_100TB/William/Projects/Cultural_remains/data:/workspace/data williamlidberg/hunting_pits:v1 bash
 
@@ -17,6 +17,8 @@ Inside the container you can run the model on a test chip by using this command:
 
     python /workspace/repo/semantic_segmentation/inference_unet_from_dem.py /workspace/repo/data/test_chip/dem/ /workspace/repo/semantic_segmentation/trained_models/UNet/05m/profile_curvature1/trained.h5 /workspace/data/
 
+
+The output will be a polygon shapefile that you can open in Qgis or similair. 
 
 ## AIM
 The aim was to investigate whether hunting pits could be automatically mapped using Swedish national ALS data and deep learning. We also evaluated the performance of traditional topographical indices and multiple state-of-the-art topographical indices explicitly selected to enhance pit structures in high-resolution DEM data. 
