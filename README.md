@@ -24,7 +24,7 @@ The output will be a polygon shapefile that you can open in Qgis or similair.
 The aim was to investigate whether hunting pits could be automatically mapped using Swedish national ALS data and deep learning. We also evaluated the performance of traditional topographical indices and multiple state-of-the-art topographical indices explicitly selected to enhance pit structures in high-resolution DEM data. 
 
 ## Paper
-Detection of Hunting Pits using Airborne Laser Scanning and Deep Learning[https://www.tandfonline.com/doi/full/10.1080/00934690.2024.2364428]
+[Detection of Hunting Pits using Airborne Laser Scanning and Deep Learning](https://www.tandfonline.com/doi/full/10.1080/00934690.2024.2364428)
 
 <img src="images/Hunting_kids.jpg" alt="Study area" width="75%"/>\
 
